@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Symbol is required' }, { status: 400 });
   }
 
-  const apiKey = process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY;
+  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
 
   if (!apiKey) {
     return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
