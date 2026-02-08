@@ -11,16 +11,15 @@
  * API: https://www.alphavantage.co/support#api-key
  * Free Tier: 500 requests/day, 15-20min delayed quotes
  * 
+ * NOTE: Uses server-side proxy to hide API key
+ * 
  * @module src/lib/market-data
  */
 
 import { DesignTokens } from '@/styles/designTokens';
 
-// ============================================================================
-// Configuration
-// ============================================================================
-
-const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
+// Use local API proxy to hide the API key
+const API_PROXY_URL = '/api/market-data';
 
 // Supported market symbols with display information
 export const MARKET_SYMBOLS = {
@@ -122,87 +121,46 @@ export interface MarketDataState {
 }
 
 // ============================================================================
-// API Client
+// API Client (Server-side Proxy)
 // ============================================================================
 
 /**
- * Get API key from environment variable
- */
-function getApiKey(): string {
-  return process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY || '';
-}
-
-/**
- * Validate API response for rate limiting
- */
-function isRateLimited(data: any): boolean {
-  return data.Information?.includes('API rate limit') || 
-         data.Note?.includes('API rate limit') ||
-         data['Error Message']?.includes('API rate limit');
-}
-
-/**
- * Fetch quote for a single symbol
+ * Fetch quote for a single symbol via proxy
+ * This hides the API key from the client
  */
 async function fetchQuote(symbol: string): Promise<MarketQuote | null> {
-  const apiKey = getApiKey();
-  
-  if (!apiKey) {
-    console.warn('[MarketData] API key not configured');
-    return null;
-  }
-
   try {
     const response = await fetch(
-      `${ALPHA_VANTAGE_BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
+      `${API_PROXY_URL}?symbol=${symbol}`
     );
 
     if (!response.ok) {
+      if (response.status === 429) {
+        console.warn('[MarketData] API rate limit reached');
+        return null;
+      }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
 
-    // Check for rate limiting
-    if (isRateLimited(data)) {
-      console.warn('[MarketData] API rate limit reached');
+    if (data.error) {
+      console.warn('[MarketData] API error:', data.error);
       return null;
     }
-
-    // Check for API error
-    if (data['Error Message'] || data.Note) {
-      console.warn('[MarketData] API error:', data);
-      return null;
-    }
-
-    // Parse GLOBAL_QUOTE response
-    const quoteData = data['Global Quote'];
-    if (!quoteData || Object.keys(quoteData).length === 0) {
-      return null;
-    }
-
-    const price = parseFloat(quoteData['05. price'] || '0');
-    const change = parseFloat(quoteData['09. change'] || '0');
-    const changePercent = parseFloat(quoteData['10. change percent']?.replace('%', '') || '0');
-    const previousClose = parseFloat(quoteData['08. previous close'] || '0');
-    const open = parseFloat(quoteData['02. open'] || '0');
-    const high = parseFloat(quoteData['03. high'] || '0');
-    const low = parseFloat(quoteData['04. low'] || '0');
-    const volume = parseInt(quoteData['06. volume'] || '0');
-    const latestTradingDay = quoteData['07. latest trading day'] || '';
 
     return {
-      symbol,
-      price,
-      change,
-      changePercent,
-      previousClose,
-      open,
-      high,
-      low,
-      volume,
-      latestTradingDay,
-      timestamp: Date.now(),
+      symbol: data.symbol,
+      price: data.price,
+      change: data.change,
+      changePercent: data.changePercent,
+      previousClose: data.previousClose,
+      open: data.open,
+      high: data.high,
+      low: data.low,
+      volume: data.volume,
+      latestTradingDay: data.latestTradingDay,
+      timestamp: data.timestamp,
     };
   } catch (error) {
     console.error(`[MarketData] Failed to fetch quote for ${symbol}:`, error);
