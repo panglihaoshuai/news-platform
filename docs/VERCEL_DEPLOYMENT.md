@@ -1,37 +1,49 @@
 # Vercel Deployment Guide
 
-## Quick Deploy
+## Quick Deploy (One Command)
 
-### Option 1: Vercel CLI (Recommended)
+```bash
+# Option 1: Deploy with token (replace YOUR_TOKEN with your GitHub token)
+vercel --prod --token=YOUR_TOKEN
+
+# Option 2: Link project first, then deploy
+vercel link
+vercel --prod
+```
+
+Or manually:
 
 ```bash
 # Install Vercel CLI
 npm i -g vercel
 
-# Login to Vercel
+# Login (if not already logged in)
 vercel login
 
-# Deploy to Vercel
-vercel
+# Deploy to Vercel (Production)
+vercel --prod
 ```
-
-### Option 2: Vercel Dashboard
-
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Click "Add New Project"
-3. Import from GitHub: `panglihaoshuai/news-platform`
-4. Configure Environment Variables (see below)
-5. Click "Deploy"
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` and fill in your values:
+Vercel will automatically use environment variables from `.env.local` if you link your project:
 
 ```bash
-cp .env.example .env.local
+# Link your project to Vercel
+vercel link
+
+# Then deploy - it will use .env.local automatically
+vercel --prod
 ```
 
-Required variables:
+### Manual Environment Variable Setup
+
+If you prefer to set variables manually in Vercel Dashboard:
+
+1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+2. Select project `news-platform`
+3. Go to Settings → Environment Variables
+4. Copy all variables from `.env.local`
 
 | Variable | Description | Where to get |
 |----------|-------------|--------------|
