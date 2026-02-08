@@ -1,0 +1,29 @@
+{
+  "HomePage": {
+    "title": "Global News Map",
+    "subtitle": "Visualize the world's events",
+    "mapTab": "Map",
+    "feedTab": "News Feed",
+    "filters": {
+      "timeRange": "Time Range",
+      "region": "Region",
+      "categories": "Categories",
+      "density": "Density"
+    }
+  },
+  "NewsFeed": {
+    "loading": "Loading news...",
+    "readOriginal": "Read Original",
+    "source": "Source",
+    "expand": "Show Details"
+  },
+  "Regions": {
+    "NA": "North America",
+    "EU": "Europe",
+    "AS": "Asia",
+    "ME": "Middle East",
+    "AF": "Africa",
+    "OC": "Oceania",
+    "SA": "South America"
+  }
+}

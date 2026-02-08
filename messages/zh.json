@@ -1,0 +1,29 @@
+{
+    "HomePage": {
+        "title": "全球新闻地图",
+        "subtitle": "可视化全球热点事件",
+        "mapTab": "地图模式",
+        "feedTab": "新闻列表",
+        "filters": {
+            "timeRange": "时间范围",
+            "region": "地区",
+            "categories": "分类领域",
+            "density": "信息密度"
+        }
+    },
+    "NewsFeed": {
+        "loading": "正在加载新闻...",
+        "readOriginal": "阅读原文",
+        "source": "来源",
+        "expand": "显示详情"
+    },
+    "Regions": {
+        "NA": "北美洲",
+        "EU": "欧洲",
+        "AS": "亚洲",
+        "ME": "中东",
+        "AF": "非洲",
+        "OC": "大洋洲",
+        "SA": "南美洲"
+    }
+}

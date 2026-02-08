@@ -9,9 +9,23 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@remotion/player": "^4.0.418",
+    "@supabase/supabase-js": "^2.94.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "lucide-react": "^0.563.0",
+    "maplibre-gl": "^5.17.0",
     "next": "16.1.6",
+    "next-intl": "^4.8.2",
+    "playwright": "^1.58.2",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "remotion": "^4.0.418",
+    "rss-parser": "^3.13.0",
+    "string-similarity": "^4.0.4",
+    "tailwind-merge": "^3.4.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
