@@ -67,10 +67,10 @@ const CONFIG = {
     retentionDays: 3,
   },
 
-  // Deduplication
+  // Deduplication - reduced window for more fresh data
   dedup: {
     similarityThreshold: 0.5,
-    timeWindowHours: 48,
+    timeWindowHours: 6,  // 缩短到6小时，允许更多数据
   },
 };
 
@@ -193,10 +193,9 @@ async function fetchFromGdeltApi(): Promise<{ fetched: number; items: UnifiedNew
   const items: UnifiedNewsItem[] = [];
   const errors: string[] = [];
   
-  // Query top 10 sources individually (GDELT has query complexity limits)
+  // Query ALL enabled sources individually (removed slice limit)
   const sourcesToQuery = gdeltSources
-    .filter((s: NewsSourceConfig) => s.enabled && s.config.domain)
-    .slice(0, 10);
+    .filter((s: NewsSourceConfig) => s.enabled && s.config.domain);
   
   console.log(`   📡 GDELT API: Querying ${sourcesToQuery.length} sources individually`);
 
