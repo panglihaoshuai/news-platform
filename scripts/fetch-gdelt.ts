@@ -26,10 +26,10 @@ import {
   buildGdeltQueryUrl,
   getEnabledGdeltSources,
   getGdeltSourceByDomain,
-} from '@/config/gdelt-sources';
-import { GdeltTransformer, type GdeltApiResponse, type GdeltArticle } from '@/lib/gdelt-transformer';
-import { recordMetrics } from '@/lib/monitoring';
-import type { NewsSourceConfig, UnifiedNewsItem, FetchMetricsRecord } from '@/types/unified-news';
+} from '../src/config/gdelt-sources';
+import { GdeltTransformer, type GdeltApiResponse, type GdeltArticle } from '../src/lib/gdelt-transformer';
+import { recordMetrics } from '../src/lib/monitoring';
+import type { NewsSourceConfig, UnifiedNewsItem, FetchMetricsRecord } from '../src/types/unified-news';
 
 // ============================================================================
 // Configuration

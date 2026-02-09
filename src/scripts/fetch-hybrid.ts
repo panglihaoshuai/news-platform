@@ -31,7 +31,7 @@ import { GDELT_CONFIG, getEnabledGdeltSources } from '@/config/gdelt-sources';
 import { NewsDataTransformer } from '@/lib/data-transformer';
 import { GdeltTransformer } from '@/lib/gdelt-transformer';
 import { recordMetrics } from '@/lib/monitoring';
-import type { NewsSourceConfig, UnifiedNewsItem, FetchMetricsRecord } from '@/types/unified-news';
+import type { NewsSourceConfig, UnifiedNewsItem, FetchMetricsRecord, SourceTier } from '@/types/unified-news';
 
 // ============================================================================
 // Configuration
@@ -192,9 +192,9 @@ async function fetchFromGdeltApi(): Promise<{ fetched: number; items: UnifiedNew
 
   try {
     // Build combined query for tier 1 sources
-    const tier1Sources = gdeltSources.filter((s) => s.tier === 'tier1');
-    const domains = tier1Sources.map((s) => s.config.domain).filter(Boolean) as string[];
-    const query = domains.map((d) => `domain:${d}`).join(' OR ');
+    const tier1Sources = gdeltSources.filter((s: NewsSourceConfig) => s.tier === 'tier1');
+    const domains = tier1Sources.map((s: NewsSourceConfig) => s.config.domain).filter(Boolean) as string[];
+    const query = domains.map((d: string) => `domain:${d}`).join(' ');
 
     const url = new URL(CONFIG.gdelt.apiBaseUrl);
     url.searchParams.set('query', query);
@@ -246,9 +246,9 @@ async function insertNewsItems(
 
   for (let i = 0; i < items.length; i += CONFIG.db.batchSize) {
     const batch = items.slice(i, i + CONFIG.db.batchSize);
-    
+
     // Filter out duplicates
-    const uniqueBatch = batch.filter((item) => {
+    const uniqueBatch = batch.filter((item: UnifiedNewsItem) => {
       // Check recent items map
       if (recentItems.has(item.external_id)) {
         return false;
@@ -409,14 +409,24 @@ async function fetchFromSource(
     inserted = await insertNewsItems(result.items, recentItems);
 
     // Update source last fetched time
+    // Note: Supabase JS doesn't support raw SQL, using sequential query
+    const { data: currentSource } = await supabase
+      .from('rss_sources')
+      .select('fetch_count, success_rate')
+      .eq('id', source.id)
+      .single();
+
+    const newFetchCount = (currentSource?.fetch_count || 0) + 1;
+    const newSuccessRate = currentSource
+      ? (currentSource.success_rate * currentSource.fetch_count + (inserted > 0 ? 1 : 0)) / newFetchCount
+      : (inserted > 0 ? 1 : 0);
+
     await supabase
       .from('rss_sources')
       .update({
         last_fetched_at: new Date().toISOString(),
-        fetch_count: supabase.raw('fetch_count + 1'),
-        success_rate: supabase.raw(
-          `(success_rate * fetch_count + ${inserted > 0 ? 1 : 0}) / (fetch_count + 1)`
-        ),
+        fetch_count: newFetchCount,
+        success_rate: newSuccessRate,
       })
       .eq('id', source.id);
 
@@ -430,12 +440,24 @@ async function fetchFromSource(
     console.error(`      ❌ ${source.name} failed: ${err.message}`);
 
     // Update failure count
-    await supabase
+    const { data: currentSource } = await supabase
       .from('rss_sources')
-      .update({
-        success_rate: supabase.raw('success_rate * 0.9'),
-      })
-      .eq('id', source.id);
+      .select('fetch_count, success_rate')
+      .eq('id', source.id)
+      .single();
+
+    if (currentSource) {
+      const newFetchCount = currentSource.fetch_count + 1;
+      const newSuccessRate = (currentSource.success_rate * currentSource.fetch_count) / newFetchCount;
+
+      await supabase
+        .from('rss_sources')
+        .update({
+          fetch_count: newFetchCount,
+          success_rate: newSuccessRate,
+        })
+        .eq('id', source.id);
+    }
   }
 
   return {
@@ -462,9 +484,9 @@ async function fetchHybrid(): Promise<FetchMetricsRecord> {
   console.log(`   Config: Direct RSS + NewsData.io + GDELT (3-Layer Architecture)\n`);
 
   // Get all enabled sources
-  const allSources = getHourlyFetchOrder().filter((s) => s.enabled);
-  const newsdataSources = allSources.filter((s) => s.type === 'newsdata');
-  const rssSources = allSources.filter((s) => s.type === 'rss');
+  const allSources = getHourlyFetchOrder().filter((s: NewsSourceConfig) => s.enabled);
+  const newsdataSources = allSources.filter((s: NewsSourceConfig) => s.type === 'newsdata');
+  const rssSources = allSources.filter((s: NewsSourceConfig) => s.type === 'rss');
   const gdeltSources = getEnabledGdeltSources();
 
   console.log(`📊 Sources:`);
