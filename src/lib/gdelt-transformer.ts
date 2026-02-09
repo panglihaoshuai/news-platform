@@ -384,10 +384,25 @@ export class GdeltTransformer {
       return new Date().toISOString();
     }
 
-    // GDELT format: YYYYMMDDHHMMSS
-    const match = gdeltDate.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
-    if (match) {
-      const [, year, month, day, hour, minute, second] = match;
+    // GDELT format 1: YYYYMMDDTHHMMSSZ (ISO-like with T and Z)
+    const isoMatch = gdeltDate.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?$/);
+    if (isoMatch) {
+      const [, year, month, day, hour, minute, second] = isoMatch;
+      const date = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hour),
+        parseInt(minute),
+        parseInt(second)
+      );
+      return date.toISOString();
+    }
+
+    // GDELT format 2: YYYYMMDDHHMMSS (plain)
+    const plainMatch = gdeltDate.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if (plainMatch) {
+      const [, year, month, day, hour, minute, second] = plainMatch;
       const date = new Date(
         parseInt(year),
         parseInt(month) - 1,
