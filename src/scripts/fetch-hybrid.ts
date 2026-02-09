@@ -194,7 +194,7 @@ async function fetchFromGdeltApi(): Promise<{ fetched: number; items: UnifiedNew
     // Build combined query for tier 1 sources
     const tier1Sources = gdeltSources.filter((s: NewsSourceConfig) => s.tier === 'tier1');
     const domains = tier1Sources.map((s: NewsSourceConfig) => s.config.domain).filter(Boolean) as string[];
-    const query = domains.map((d: string) => `domain:${d}`).join(' ');
+    const query = domains.map((d: string) => `domain:${d}`).join(' OR ');
 
     const url = new URL(CONFIG.gdelt.apiBaseUrl);
     url.searchParams.set('query', query);
