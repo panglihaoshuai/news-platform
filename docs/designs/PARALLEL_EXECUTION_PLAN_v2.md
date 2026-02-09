@@ -763,3 +763,51 @@ const singleSourceNews = [
 
 **计划版本**: v2.0 (2026-02-08)
 **更新内容**: 新增热度算法与地图显示模式系统
+
+---
+
+## 📡 RSS 数据源策略更新 (2026-02-08)
+
+### 问题背景
+
+GitHub Actions 网络环境对国际 RSS 源有限制：
+- BBC World, NYT World, Reuters → 超时/被屏蔽
+- 13 个 Google News RSS → 全部失败
+- RSSHub Vercel 实例 → 无响应
+
+### 测试结果
+
+| RSS 源 | 状态 | 新闻数 |
+|--------|------|--------|
+| Africa News | ✅ 工作 | 50 |
+| France 24 | ✅ 工作 | 23 |
+| Solidot | ✅ 工作 | 20 |
+| BBC World | ❌ 超时 | - |
+| Reuters | ❌ 404 | - |
+| 联合早报 | ❌ 解析错误 | - |
+| Al Jazeera | ❌ 超时 | - |
+| DW News | ❌ 超时 | - |
+
+### 当前解决方案
+
+**执行的操作**:
+1. ✅ 禁用 13 个 Google News RSS 源
+2. ✅ 启用 18 个权威直接 RSS 源
+3. ✅ 更新 fetch-rss.ts 添加 RSSHub.app 代理支持
+4. ✅ 添加降级策略（直接失败时尝试代理）
+
+**当前启用的源 (18个)**:
+- 国际: Africa News, France 24, Solidot, DW News, CNA, ABC Australia, Kyodo News, Guardian
+- 中文: 联合早报, BBC 中文, FT 中文, RFI 中文, WSJ 中文, NYT 中文, 路透中文
+
+### 已知问题
+
+1. **网络限制**: 部分国际源在国内网络环境不可访问
+2. **解决方案**: 依赖可访问的源，或部署私有 RSSHub
+
+### 后续优化建议
+
+1. 部署私有 RSSHub 到可访问的服务器
+2. 使用代理服务器获取被屏蔽的 RSS
+3. 扩展可用源列表（添加更多可访问的源）
+4. 添加 RSS 源健康检查和自动降级

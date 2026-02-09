@@ -45,6 +45,42 @@ const parser = new Parser({
   }
 });
 
+// RSSHub.app proxy configuration for blocked sources
+const RSSHUB_APP_BASE = 'https://rsshub.app';
+
+interface RSSSource {
+  id: string;
+  name: string;
+  feed_url: string;
+  language: string;
+  country_code: string | null;
+  enabled: boolean;
+  use_proxy?: boolean;  // Whether to route through RSSHub.app proxy
+}
+
+// Check if URL should use RSSHub.app proxy
+function getProxiedUrl(url: string, useProxy?: boolean): string {
+  if (!useProxy) return url;
+
+  // RSSHub.app doesn't support direct Google News URLs, it needs special routes
+  // For Google News, route through RSSHub
+  if (url.includes('news.google.com/rss')) {
+    // Extract query from Google News URL and convert to RSSHub route
+    const match = url.match(/q=(.+?)&/);
+    if (match) {
+      const query = encodeURIComponent(match[1]);
+      return `${RSSHUB_APP_BASE}/google/search/${query}?limit=50`;
+    }
+  }
+
+  // For other URLs that need proxying
+  if (url.startsWith('https://cn.reuters.com/')) {
+    return `${RSSHUB_APP_BASE}${url.replace('https://cn.reuters.com', '')}`;
+  }
+
+  return url;
+}
+
 const SIMILARITY_THRESHOLD = 0.5;
 const RETENTION_DAYS = 3;
 
@@ -236,8 +272,31 @@ async function fetchAllFeeds() {
 
   for (const source of sources) {
     try {
+      // Get the URL (with proxy if needed)
+      const fetchUrl = getProxiedUrl(source.feed_url, source.use_proxy);
       console.log(`📡 Fetching [${source.language}] ${source.name}...`);
-      const feed = await parser.parseURL(source.feed_url);
+      if (fetchUrl !== source.feed_url) {
+        console.log(`   └─ Using proxy: ${fetchUrl.substring(0, 80)}...`);
+      }
+
+      let feed: any;
+      try {
+        feed = await parser.parseURL(fetchUrl);
+      } catch (fetchError) {
+        // If direct fetch fails and proxy is available, try RSSHub.app
+        if (!source.use_proxy && source.feed_url.includes('news.google.com')) {
+          console.log(`   └─ Direct fetch failed, trying RSSHub.app proxy...`);
+          const proxyUrl = `${RSSHUB_APP_BASE}/google/search/${encodeURIComponent(source.name)}?limit=30`;
+          try {
+            feed = await parser.parseURL(proxyUrl);
+          } catch (proxyError) {
+            console.log(`   ⚠️  Both direct and proxy failed`);
+            continue;
+          }
+        } else {
+          throw fetchError;
+        }
+      }
 
       const newsItems: any[] = [];
 

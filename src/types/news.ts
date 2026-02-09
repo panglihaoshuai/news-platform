@@ -3,16 +3,16 @@ export interface NewsItem {
     source_id: string;
     source_name: string;
     source_language: 'en' | 'zh';
-    title: string;
-    summary: string;
-    original_url: string;
+    title: string;                    // ✅ 标题完整保留
+    summary: string;                   // ✅ 摘要完整保留
+    original_url: string;             // ✅ 原文链接，可点击跳转
     published_at: string;
     geo_lat: number | null;
     geo_lng: number | null;
     region_code: string | null;
     country_code: string | null;
     importance_score: number;
-    image_url: string | null;
+    // ❌ image_url 已移除 - 轻量化设计，不存储图片
     created_at: string;
     
     // Categories from RSS source
