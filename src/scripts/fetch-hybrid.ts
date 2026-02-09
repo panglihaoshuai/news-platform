@@ -57,8 +57,8 @@ const CONFIG = {
     apiBaseUrl: GDELT_CONFIG.apiBaseUrl,
     timeout: GDELT_CONFIG.timeoutMs,
     requestDelayMs: GDELT_CONFIG.requestDelayMs,
-    maxRecords: 50,
-    timespan: '24h',
+    maxRecords: 100,  // 增加到100条每源
+    timespan: '48h',  // 扩大到48小时
   },
 
   // Database configuration
@@ -193,10 +193,10 @@ async function fetchFromGdeltApi(): Promise<{ fetched: number; items: UnifiedNew
   const items: UnifiedNewsItem[] = [];
   const errors: string[] = [];
   
-  // Query top 5 sources individually (GDELT has query complexity limits)
+  // Query top 10 sources individually (GDELT has query complexity limits)
   const sourcesToQuery = gdeltSources
     .filter((s: NewsSourceConfig) => s.enabled && s.config.domain)
-    .slice(0, 5);
+    .slice(0, 10);
   
   console.log(`   📡 GDELT API: Querying ${sourcesToQuery.length} sources individually`);
 
