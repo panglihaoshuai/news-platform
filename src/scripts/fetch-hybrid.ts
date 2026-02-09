@@ -261,22 +261,10 @@ async function insertNewsItems(
   for (let i = 0; i < items.length; i += CONFIG.db.batchSize) {
     const batch = items.slice(i, i + CONFIG.db.batchSize);
 
-    // Filter out duplicates
+    // Filter out duplicates (only check external_id, skip title similarity)
     const uniqueBatch = batch.filter((item: UnifiedNewsItem) => {
-      // Check recent items map
-      if (recentItems.has(item.external_id)) {
-        return false;
-      }
-      
-      // Check similarity (basic check)
-      const recentTitles = Array.from(recentItems.keys());
-      for (const recentTitle of recentTitles) {
-        if (stringSimilarity(item.title, recentTitle) > CONFIG.dedup.similarityThreshold) {
-          return false;
-        }
-      }
-      
-      return true;
+      // Only check external_id in recent items map
+      return !recentItems.has(item.external_id);
     });
 
     if (uniqueBatch.length === 0) continue;
