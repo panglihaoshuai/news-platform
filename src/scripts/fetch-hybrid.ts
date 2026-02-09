@@ -190,47 +190,61 @@ async function fetchFromGdeltApi(): Promise<{ fetched: number; items: UnifiedNew
     return { fetched: 0, items: [] };
   }
 
-  try {
-    // Build combined query for tier 1 sources
-    const tier1Sources = gdeltSources.filter((s: NewsSourceConfig) => s.tier === 'tier1');
-    const domains = tier1Sources.map((s: NewsSourceConfig) => s.config.domain).filter(Boolean) as string[];
-    const query = domains.map((d: string) => `domain:${d}`).join(' OR ');
+  const items: UnifiedNewsItem[] = [];
+  const errors: string[] = [];
+  
+  // Query top 5 sources individually (GDELT has query complexity limits)
+  const sourcesToQuery = gdeltSources
+    .filter((s: NewsSourceConfig) => s.enabled && s.config.domain)
+    .slice(0, 5);
+  
+  console.log(`   📡 GDELT API: Querying ${sourcesToQuery.length} sources individually`);
 
-    const url = new URL(CONFIG.gdelt.apiBaseUrl);
-    url.searchParams.set('query', query);
-    url.searchParams.set('mode', 'artlist');
-    url.searchParams.set('format', 'json');
-    url.searchParams.set('maxrecords', String(CONFIG.gdelt.maxRecords * 2));
-    url.searchParams.set('timespan', CONFIG.gdelt.timespan);
-    url.searchParams.set('sort', 'Date');
+  for (const source of sourcesToQuery) {
+    try {
+      const domain = source.config.domain;
+      if (!domain) continue;
 
-    console.log(`   📡 GDELT API: Combined query for ${tier1Sources.length} sources`);
+      const url = new URL(CONFIG.gdelt.apiBaseUrl);
+      url.searchParams.set('query', `domain:${domain}`);
+      url.searchParams.set('mode', 'artlist');
+      url.searchParams.set('format', 'json');
+      url.searchParams.set('maxrecords', String(CONFIG.gdelt.maxRecords));
+      url.searchParams.set('timespan', CONFIG.gdelt.timespan);
 
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-      signal: AbortSignal.timeout(CONFIG.gdelt.timeout),
-    });
+      console.log(`      📡 Querying ${source.name} (${domain})...`);
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(CONFIG.gdelt.timeout),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const articles = data.articles || [];
+      
+      console.log(`      ✅ ${source.name}: ${articles.length} articles`);
+
+      // Transform articles with source context
+      const sourceItems = gdeltTransformer.transformGdeltBatch(articles, source);
+      items.push(...sourceItems);
+
+      // Rate limiting between requests
+      await sleep(CONFIG.gdelt.requestDelayMs);
+
+    } catch (error: any) {
+      errors.push(`${source.name}: ${error.message}`);
+      console.error(`      ❌ ${source.name} failed: ${error.message}`);
     }
-
-    const data = await response.json();
-    const articles = data.articles || [];
-
-    console.log(`   ✅ Retrieved ${articles.length} articles from GDELT`);
-
-    // Transform articles
-    const items = gdeltTransformer.transformGdeltBatch(articles);
-
-    return { fetched: articles.length, items };
-  } catch (error: any) {
-    console.error(`   ❌ GDELT fetch failed: ${error.message}`);
-    return { fetched: 0, items: [] };
   }
+
+  console.log(`   📊 GDELT Total: ${items.length} articles from ${sourcesToQuery.length - errors.length}/${sourcesToQuery.length} sources`);
+  
+  return { fetched: items.length, items };
 }
 
 /**
