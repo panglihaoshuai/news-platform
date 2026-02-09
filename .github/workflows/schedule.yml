@@ -6,6 +6,11 @@ name: Scheduled News Fetch
 # - 预计耗时: 每次1.5分钟
 # - 月度使用: ~1080分钟 (54%额度, 充足备用)
 
+# 防止并发：如果上一个还没完成，新的不会启动
+concurrency:
+  group: scheduled-fetch
+  cancel-in-progress: false
+
 on:
   schedule:
     # Cron: 每小时运行一次
