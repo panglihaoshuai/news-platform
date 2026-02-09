@@ -20,7 +20,7 @@ npm i -g vercel
 npm i -g supabase
 ```
 
-## 🚀 部署步骤
+## 🚀 Deployment Steps
 
 ### 步骤1: 创建GitHub仓库
 
@@ -75,13 +75,25 @@ git push -u origin main
 在部署配置页面，添加以下环境变量：
 
 ```
-SUPABASE_URL=https://[project-ref].supabase.co
-SUPABASE_ANON_KEY=[your-anon-key]
-SUPABASE_SERVICE_KEY=[your-service-role-key]
-RSSHUB_BASE_URL=https://rsshub.app
+# Supabase (Required)
+NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
+SUPABASE_SERVICE_ROLE_KEY=[your-service-role-key]
+
+# NewsData.io (Optional - for blocked sources)
+# Get free API key at: https://newsdata.io/
+NEWS_DATA_API_KEY=your-newsdata-api-key
+
+# DeepSeek (Optional - for LLM classification)
+# Get free API key at: https://platform.deepseek.com/
+DEEPSEEK_API_KEY=your-deepseek-api-key
+
+# GDELT API (NO API KEY REQUIRED!)
+# Already configured in code, no action needed
 ```
 
-> **注意**: `SUPABASE_SERVICE_KEY` 是Service Role Key，不是Anon Key！
+> **注意**: 
+> - GDELT API (三层架构 Layer 3) 完全免费，无需配置API密钥！
+> - **定时采集使用 GitHub Actions**，不需要配置 Vercel Cron
 
 #### 3.2 完成部署
 
@@ -96,24 +108,62 @@ RSSHUB_BASE_URL=https://rsshub.app
 3. 添加以下Secrets：
 
 ```
-SUPABASE_URL=https://[project-ref].supabase.co
-SUPABASE_SERVICE_KEY=[your-service-role-key]
-RSSHUB_BASE_URL=https://rsshub.app
+# Vercel (Required for CI/CD)
+VERCEL_TOKEN=[your-vercel-token]
+VERCEL_ORG_ID=[from-vercel-project-settings]
+VERCEL_PROJECT_ID=[from-vercel-project-settings]
+
+# Supabase (Required)
+NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
+SUPABASE_SERVICE_ROLE_KEY=[your-service-role-key]
+
+# API Keys (Optional)
+NEWS_DATA_API_KEY=[your-newsdata-api-key]
+DEEPSEEK_API_KEY=[your-deepseek-api-key]
 ```
 
 > **注意**: GitHub Secrets区分大小写，务必完全一致！
 
 ### 步骤5: 验证部署
 
-#### 5.1 测试数据采集
+#### 5.1 测试三层混合架构
 
-1. 在GitHub仓库页面，点击 "Actions" 标签
-2. 找到 "Fetch RSS News" 工作流
-3. 点击 "Run workflow" 手动触发一次
-4. 等待执行完成（约5-10分钟）
-5. 检查是否成功（绿色✓）
+```bash
+# 本地测试
+npm run fetch:hybrid
 
-#### 5.2 测试API接口
+# 预期输出：
+# 🚀 === HYBRID NEWS FETCH STARTED ===
+# 📊 Sources:
+#    Direct RSS: 12
+#    NewsData.io: 8
+#    GDELT: 14  ← 新增！
+# Total: 34 sources
+# 📡 === Phase 1: Direct RSS (Real-Time) ===
+# 📡 === Phase 2: NewsData.io API ===
+# 📡 === Phase 3: GDELT API (~15min delay) ===
+# 📊 === FETCH SUMMARY ===
+# Total fetched: 100-500
+# Total inserted: 50-200
+```
+
+#### 5.2 GDELT API 独立测试
+
+```bash
+# 测试GDELT Layer 3
+npm run fetch:gdelt
+
+# 预期输出：
+# 🚀 === GDELT FETCH STARTED ===
+# 📡 GDELT API: Combined query for tier 1 sources
+# ✅ Retrieved 50 articles from GDELT
+# 📦 Transformed 48 articles to unified format
+# 📊 === FETCH SUMMARY ===
+# Total fetched: 50
+# Total inserted: 48
+```
+
+#### 5.3 测试API接口
 
 ```bash
 # 测试新闻查询API
@@ -122,7 +172,7 @@ curl "https://your-domain.vercel.app/api/news?timeRange=24h&density=medium"
 
 应该返回JSON格式的最新新闻数据。
 
-#### 5.3 测试前端页面
+#### 5.4 测试前端页面
 
 1. 访问 `https://your-domain.vercel.app`
 2. 应该看到控制面板和空的播放器区域
@@ -133,12 +183,27 @@ curl "https://your-domain.vercel.app/api/news?timeRange=24h&density=medium"
 
 ### GitHub Actions 监控
 
-在 `.github/workflows/fetch-news.yml` 中已配置：
-- 每6小时执行一次（120次/月）
-- 单次超时15分钟
-- 失败时自动创建Issue
+已配置两个工作流：
+- **CI/CD** (`ci.yml`): 每次PR和push自动运行
+- **Scheduled Fetch** (`schedule.yml`): **每1小时自动采集** ⭐
+
+**定时采集频率**: 
+```
+每1小时运行一次 = 每天24次 = 每月约720次
+预计耗时: 每次1.5分钟
+月度使用: ~1080分钟 (54%额度, 充足备用)
+```
 
 **监控面板**: https://github.com/[username]/[repo]/settings/actions
+
+### 三层架构数据源统计
+
+| Layer | Source Type | Count | Delay | Cost |
+|-------|-------------|-------|-------|------|
+| Layer 1 | Direct RSS | ~12 | Real-time | Free |
+| Layer 2 | NewsData.io | ~8 | ~12 hours | Free tier |
+| Layer 3 | GDELT | ~14 | ~15 min | **Free!** |
+| **Total** | | **~34** | Best coverage | **$0** |
 
 ### Supabase 存储监控
 
@@ -180,18 +245,14 @@ WHERE published_at < EXTRACT(EPOCH FROM (NOW() - INTERVAL '90 days'))::INTEGER;
 
 **排查步骤**:
 1. 查看Actions日志，找到错误信息
-2. 检查 `SUPABASE_SERVICE_KEY` 是否正确
+2. 检查 `SUPABASE_SERVICE_ROLE_KEY` 是否正确
 3. 检查RSSHub服务状态：`curl https://rsshub.app`
-4. 如果是限流错误，增加延迟或更换RSSHub实例
+4. 如果是限流错误，GitHub Actions会自动重试
 
 **解决方案**:
 ```bash
 # 测试RSSHub连接
 curl "https://rsshub.app/bbc/world"
-
-# 如果失败，尝试备用实例
-# 编辑 .github/workflows/fetch-news.yml
-# 修改 RSSHUB_BASE_URL 为备用地址
 ```
 
 ### 问题2: 数据库连接失败
@@ -199,17 +260,14 @@ curl "https://rsshub.app/bbc/world"
 **症状**: API返回500错误，提示数据库连接失败
 
 **排查步骤**:
-1. 检查 `SUPABASE_URL` 和 `SUPABASE_SERVICE_KEY` 是否正确
+1. 检查 `SUPABASE_SERVICE_ROLE_KEY` 是否正确
 2. 检查Supabase项目是否处于Active状态
 3. 检查是否超过连接数限制（免费层60个并发）
 
 **解决方案**:
 ```bash
-# 测试数据库连接
+# 测试数据库连接 (使用Supabase CLI)
 npx supabase status
-
-# 或者使用psql直接连接
-psql "postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres"
 ```
 
 ### 问题3: 存储超限
@@ -284,22 +342,23 @@ git push origin data-backup-$(date +%Y%m)
 
 ### 免费层使用情况
 
-| 服务 | 免费额度 | 预计使用 | 使用率 |
-|------|---------|---------|--------|
-| GitHub Actions | 2000分钟/月 | ~300分钟/月 | 15% |
-| Supabase | 500MB | ~120MB/月 | 24% |
-| Vercel | 100GB/月 | ~15GB/月 | 15% |
+| 服务 | 免费额度 | 预计使用 | 使用率 | 说明 |
+|------|---------|---------|--------|------|
+| GitHub Actions | 2000分钟/月 | ~500分钟/月 | 25% | CI/CD + Scheduled Fetch |
+| Supabase | 500MB | ~120MB/月 | 24% | 新闻数据存储 |
+| Vercel | 100GB/月 | ~15GB/月 | 15% | 前端托管 |
+| **GDELT** | **Unlimited** | **~50条/小时** | **0%** | **完全免费!** |
 
 ### 升级触发条件
 
 如果出现以下情况，考虑升级到付费方案：
 
 1. **GitHub Actions超过1500分钟/月**
-   - 解决方案：减少执行频率（从6小时改为12小时）
+   - 解决方案：减少执行频率（从每小时改为每2小时）
    - 付费方案：$5/月获得3000分钟
 
 2. **Supabase存储超过400MB**
-   - 解决方案：缩短数据保留期（从90天改为60天）
+   - 解决方案：缩短数据保留期（从3天改为2天）
    - 付费方案：$25/月获得8GB存储
 
 3. **Vercel带宽超过80GB/月**
@@ -310,10 +369,16 @@ git push origin data-backup-$(date +%Y%m)
 
 部署完成后，你的全球新闻可视化平台应该：
 
-✅ 每6小时自动采集全球新闻  
+✅ **三层混合架构** (新增GDELT Layer 3)
+- Layer 1: Direct RSS (~12源, 实时)
+- Layer 2: NewsData.io (~8源, ~12小时延迟)
+- Layer 3: GDELT (~14源, ~15分钟延迟) ⭐ **完全免费!**
+- 总计: ~34个权威媒体源
+
+✅ 每小时自动采集全球新闻  
 ✅ 支持多维度筛选（时间/地区/领域/密度）  
 ✅ 使用Remotion展示动态新闻可视化  
-✅ 完全0元成本运营  
+✅ **完全0元成本运营** (GDELT无需API Key!)
 
 **访问你的应用**: `https://your-domain.vercel.app`
 

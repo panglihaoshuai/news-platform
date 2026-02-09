@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "fetch:rss": "tsx scripts/fetch-rss.ts",
+    "fetch:newsdata": "tsx src/scripts/fetch-newsdata.ts",
+    "fetch:gdelt": "tsx scripts/fetch-gdelt.ts",
+    "fetch:hybrid": "tsx src/scripts/fetch-hybrid.ts",
+    "fetch:all": "npm run fetch:hybrid",
+    "test:api": "tsx scripts/test-core.ts"
   },
   "dependencies": {
     "@remotion/player": "^4.0.418",

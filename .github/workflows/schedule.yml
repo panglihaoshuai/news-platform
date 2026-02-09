@@ -1,0 +1,59 @@
+name: Scheduled News Fetch
+
+# 每1小时自动采集新闻
+# - 每天: 24次
+# - 每月: ~720次
+# - 预计耗时: 每次1.5分钟
+# - 月度使用: ~1080分钟 (54%额度, 充足备用)
+
+on:
+  schedule:
+    # Cron: 每小时运行一次
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    # 手动触发选项
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  NEWS_DATA_API_KEY: ${{ secrets.NEWS_DATA_API_KEY }}
+
+jobs:
+  fetch-news:
+    name: Fetch Latest News
+    runs-on: ubuntu-latest
+    if: github.repository == 'your-username/your-repo'  # 替换为你的仓库
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Hybrid Fetch
+        run: |
+          echo "=========================================="
+          echo "🚀 Scheduled News Fetch - $(date)"
+          echo "=========================================="
+          echo ""
+          echo "📊 Architecture: 3-Layer Hybrid"
+          echo "   Layer 1: Direct RSS (Real-Time)"
+          echo "   Layer 2: NewsData.io API (~12h delay)"
+          echo "   Layer 3: GDELT API (~15min delay) ⭐ FREE"
+          echo ""
+          npx tsx src/scripts/fetch-hybrid.ts
+
+      - name: Report Fetch Results
+        if: always()
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "✅ Fetch job completed at $(date)"
+          echo "📁 Check Supabase dashboard for results"
+          echo "=========================================="
