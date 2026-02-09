@@ -140,6 +140,12 @@ export class GdeltTransformer {
     // Detect language (from GDELT or infer from title)
     const language = this.detectLanguage(article.language, title);
 
+    // Filter: Only keep Chinese and English articles
+    if (!['zh', 'en'].includes(language)) {
+      console.log(`   🌐 Skipping non-CN/EN article: ${title.slice(0, 50)}... (${language})`);
+      return null;
+    }
+
     // Extract categories from GDELT topics
     const categories = this.extractCategories(article.topics, source);
 
