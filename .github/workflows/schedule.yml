@@ -22,7 +22,6 @@ jobs:
   fetch-news:
     name: Fetch Latest News
     runs-on: ubuntu-latest
-    if: github.repository == 'your-username/your-repo'  # 替换为你的仓库
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
