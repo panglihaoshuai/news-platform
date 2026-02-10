@@ -96,7 +96,7 @@ function PageContent({ locale }: { locale: string }) {
             return {
               ...item,
               source_name: source?.name || item.source_id || 'Unknown Source',
-              source_language: source?.language || 'en'
+              source_language: source?.language || item.source_language || 'en'
             };
           })
           .filter(item => {

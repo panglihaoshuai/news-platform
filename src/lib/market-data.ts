@@ -44,7 +44,7 @@ export const MARKET_SYMBOLS = {
   },
   
   // Commodities
-  'GC': { 
+  'GLD': { 
     name: 'Gold', 
     category: 'commodities',
     unit: 'USD/oz',
