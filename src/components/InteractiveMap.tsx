@@ -5,6 +5,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { NewsItem, MapDisplayMode, Theme } from '@/types/news';
 import { getThemeTokens, getPriorityColor } from '@/styles/designTokens';
+import { REGION_CONFIG, getCountryByCode } from '@/config/region-mapping';
 
 interface InteractiveMapProps {
     news: NewsItem[];
@@ -12,6 +13,8 @@ interface InteractiveMapProps {
     onSelect: (id: string) => void;
     theme?: Theme;
     displayMode?: MapDisplayMode;
+    focusRegion?: string;
+    focusCountry?: string;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({ 
@@ -19,12 +22,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     selectedId, 
     onSelect,
     theme = 'dark',
-    displayMode = 'all'
+    displayMode = 'all',
+    focusRegion = 'global',
+    focusCountry = 'all',
 }) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const userInteracted = useRef(false);
+    const interactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const tokens = getThemeTokens(theme);
 
     // Auto-Pilot Logic
@@ -34,11 +40,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         const interval = setInterval(() => {
             if (userInteracted.current) return;
 
-            const currentIndex = news.findIndex(n => n.id === selectedId);
-            const nextIndex = (currentIndex + 1) % news.length;
-            if (news[nextIndex]) {
-                console.log('Auto-Pilot switching to:', news[nextIndex].title);
-                onSelect(news[nextIndex].id);
+            const sorted = [...news].sort(
+                (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+            );
+
+            const currentIndex = sorted.findIndex(n => n.id === selectedId);
+            const nextIndex = (currentIndex + 1) % sorted.length;
+            if (sorted[nextIndex]) {
+                console.log('Auto-Pilot switching to:', sorted[nextIndex].title);
+                onSelect(sorted[nextIndex].id);
             }
         }, 10000);
 
@@ -73,11 +83,24 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         });
 
         // Interaction listeners
-        map.current.on('mousedown', () => { userInteracted.current = true; });
-        map.current.on('wheel', () => { userInteracted.current = true; });
-        map.current.on('touchstart', () => { userInteracted.current = true; });
+        const onInteraction = () => {
+            userInteracted.current = true;
+            if (interactionTimer.current) {
+                clearTimeout(interactionTimer.current);
+            }
+            interactionTimer.current = setTimeout(() => {
+                userInteracted.current = false;
+            }, 30000);
+        };
+
+        map.current.on('mousedown', onInteraction);
+        map.current.on('wheel', onInteraction);
+        map.current.on('touchstart', onInteraction);
 
         return () => {
+            if (interactionTimer.current) {
+                clearTimeout(interactionTimer.current);
+            }
             map.current?.remove();
             map.current = null;
         };
@@ -233,6 +256,40 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             // Optional: Highlight styling could go here
         }
     }, [selectedId, isLoaded, news]); // Only run when selection changes
+
+    // Camera focus by selected region/country filter
+    useEffect(() => {
+        if (!isLoaded || !map.current) return;
+
+        if (focusCountry && focusCountry !== 'all') {
+            const country = getCountryByCode(focusCountry);
+            if (country) {
+                map.current.flyTo({
+                    center: [country.longitude, country.latitude],
+                    zoom: 4.2,
+                    speed: 0.8,
+                    curve: 1.35,
+                    essential: true,
+                });
+                return;
+            }
+        }
+
+        if (focusRegion && focusRegion !== 'global') {
+            const region = REGION_CONFIG.find(
+                (r) => r.code.toLowerCase() === focusRegion.toLowerCase()
+            );
+            if (region) {
+                map.current.flyTo({
+                    center: [region.longitude, region.latitude],
+                    zoom: region.zoom,
+                    speed: 0.8,
+                    curve: 1.35,
+                    essential: true,
+                });
+            }
+        }
+    }, [focusRegion, focusCountry, isLoaded]);
 
     return (
         <div className="relative w-full h-full" style={{ backgroundColor: tokens.bg.map }}>

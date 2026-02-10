@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { InteractiveMap } from '@/components/InteractiveMap';
 import { NewsFeed } from '@/components/NewsFeed';
 import { Filters } from '@/components/Filters';
@@ -19,6 +19,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+function normalizeLanguage(value?: string | null, title?: string): 'en' | 'zh' {
+  const lower = (value || '').toLowerCase();
+  if (lower.startsWith('zh') || lower === 'cn' || lower === 'chinese') return 'zh';
+  if (lower.startsWith('en') || lower === 'english') return 'en';
+  if (title && /[\u4e00-\u9fff]/.test(title)) return 'zh';
+  return 'en';
+}
 
 // ============================================================================
 // Main Page Content Component
@@ -42,9 +50,11 @@ function PageContent({ locale }: { locale: string }) {
   });
   const [isOnline, setIsOnline] = useState(true);
   const [hasLoadedNews, setHasLoadedNews] = useState(false);
+  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const [latency, setLatency] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
   const [marketExpanded, setMarketExpanded] = useState(true);
+  const latestTopNewsIdRef = useRef<string | null>(null);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -95,13 +105,22 @@ function PageContent({ locale }: { locale: string }) {
       setLatency(Date.now() - start);
 
       if (data) {
+        const countryCodes = Array.from(
+          new Set(
+            data
+              .map((item) => item.country_code)
+              .filter((code): code is string => Boolean(code))
+          )
+        ).sort();
+        setAvailableCountries(countryCodes);
+
         const enrichedNews: NewsItem[] = data
           .map(item => {
             const source = sources.find(s => s.id === item.source_id);
             return {
               ...item,
               source_name: source?.name || item.source_id || 'Unknown Source',
-              source_language: source?.language || item.source_language || 'en'
+              source_language: normalizeLanguage(source?.language || item.source_language, item.title),
             };
           })
           .filter(item => {
@@ -121,6 +140,11 @@ function PageContent({ locale }: { locale: string }) {
           });
 
         setNews(enrichedNews.slice(0, limit));
+        const latest = enrichedNews[0];
+        if (latest && latest.id !== latestTopNewsIdRef.current) {
+          setSelectedId(latest.id);
+          latestTopNewsIdRef.current = latest.id;
+        }
         setLastUpdated(new Date().toISOString());
       }
       if (error) {
@@ -140,6 +164,26 @@ function PageContent({ locale }: { locale: string }) {
   const handleNewsSelect = useCallback((newsId: string) => {
     setSelectedId(newsId);
   }, []);
+
+  const handleMapSelect = useCallback((newsId: string) => {
+    setSelectedId(newsId);
+    const selected = news.find((item) => item.id === newsId);
+    if (!selected) return;
+    const countryCode = selected?.country_code || null;
+    if (!countryCode) return;
+
+    setFilters((prev) => {
+      const nextRegion = selected.region_code || prev.region;
+      if (prev.country === countryCode && prev.region === nextRegion) {
+        return prev;
+      }
+      return {
+        ...prev,
+        region: nextRegion,
+        country: countryCode,
+      };
+    });
+  }, [news]);
 
   const handleToggleTheme = useCallback(() => {
     const themes: Theme[] = ['dark', 'amber', 'light'];
@@ -168,9 +212,11 @@ function PageContent({ locale }: { locale: string }) {
           <InteractiveMap
             news={news}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleMapSelect}
             theme={theme}
             displayMode={mapDisplayMode}
+            focusRegion={filters.region}
+            focusCountry={filters.country}
           />
         ),
         news: (
@@ -181,7 +227,7 @@ function PageContent({ locale }: { locale: string }) {
               theme={theme}
               mapDisplayMode={mapDisplayMode}
               onMapModeChange={setMapDisplayMode}
-              countries={Array.from(new Set(sources.map((s) => s.country_code).filter(Boolean)))}
+              countries={availableCountries}
             />
             <NewsFeed
               news={news}

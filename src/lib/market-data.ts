@@ -3,9 +3,9 @@
  * Bloomberg Terminal War Room Edition
  * 
  * Provides real-time market data for:
- * - Indices (S&P 500, NASDAQ, Dow Jones)
- * - Commodities (Gold, Oil)
- * - Cryptocurrencies (Bitcoin, Ethereum)
+ * - US equity benchmarks
+ * - US treasury proxies
+ * - Commodities (gold/oil/silver)
  * - Forex (USD/CNY, EUR/USD)
  * 
  * API: https://www.alphavantage.co/support#api-key
@@ -23,84 +23,80 @@ const API_PROXY_URL = '/api/market-data';
 
 // Supported market symbols with display information
 export const MARKET_SYMBOLS = {
+  // US Treasuries (ETF proxies)
+  'TLT': {
+    name: 'US 20Y+ Treasury',
+    category: 'bonds',
+    unit: 'USD',
+    displayOrder: 1,
+  },
+  'IEF': {
+    name: 'US 7-10Y Treasury',
+    category: 'bonds',
+    unit: 'USD',
+    displayOrder: 2,
+  },
+  'SHY': {
+    name: 'US 1-3Y Treasury',
+    category: 'bonds',
+    unit: 'USD',
+    displayOrder: 3,
+  },
+
+  // US Equity Benchmarks (ETF proxies)
+  'SPY': {
+    name: 'S&P 500',
+    category: 'indices',
+    displayOrder: 4,
+    unit: 'USD',
+  },
+  'QQQ': {
+    name: 'NASDAQ 100',
+    category: 'indices',
+    displayOrder: 5,
+    unit: 'USD',
+  },
+  'DIA': {
+    name: 'Dow Jones',
+    category: 'indices',
+    displayOrder: 6,
+    unit: 'USD',
+  },
+
   // Commodities
   'GLD': { 
     name: 'Gold', 
     category: 'commodities',
     unit: 'USD/oz',
-    displayOrder: 1,
+    displayOrder: 7,
   },
-  'CL': { 
+  'USO': {
     name: 'Oil', 
     category: 'commodities',
     unit: 'USD/bbl',
-    displayOrder: 2,
+    displayOrder: 8,
   },
   'SLV': {
     name: 'Silver',
     category: 'commodities',
     unit: 'USD/oz',
-    displayOrder: 3,
-  },
-  'USO': {
-    name: 'Crude ETF',
-    category: 'commodities',
-    unit: 'USD',
-    displayOrder: 4,
-  },
-  'UNG': {
-    name: 'Nat Gas ETF',
-    category: 'commodities',
-    unit: 'USD',
-    displayOrder: 5,
-  },
-
-  // Indices (Stock Market)
-  'SPX': {
-    name: 'S&P 500',
-    category: 'indices',
-    displayOrder: 6,
-    unit: undefined as string | undefined,
-  },
-  'IXIC': {
-    name: 'NASDAQ',
-    category: 'indices',
-    displayOrder: 7,
-    unit: undefined as string | undefined,
-  },
-  'DJI': {
-    name: 'Dow Jones',
-    category: 'indices',
-    displayOrder: 8,
-    unit: undefined as string | undefined,
-  },
-  
-  // Cryptocurrencies
-  'BTC': { 
-    name: 'Bitcoin', 
-    category: 'crypto',
-    unit: 'USD',
     displayOrder: 9,
-  },
-  'ETH': { 
-    name: 'Ethereum', 
-    category: 'crypto',
-    unit: 'USD',
-    displayOrder: 10,
   },
   
   // Forex
   'USDCNY': { 
     name: 'USD/CNY', 
     category: 'forex',
-    displayOrder: 11,
+    displayOrder: 10,
     unit: undefined as string | undefined,
+    apiSymbol: 'FX:USD:CNY',
   },
   'EURUSD': { 
     name: 'EUR/USD', 
     category: 'forex',
-    displayOrder: 12,
+    displayOrder: 11,
     unit: undefined as string | undefined,
+    apiSymbol: 'FX:EUR:USD',
   },
 } as const;
 
@@ -207,6 +203,8 @@ const pendingRequests = new Map<string, Promise<MarketQuote | null>>();
  */
 export async function getQuote(symbol: MarketSymbol): Promise<MarketQuote | null> {
   const now = Date.now();
+  const symbolConfig = MARKET_SYMBOLS[symbol];
+  const requestSymbol = 'apiSymbol' in symbolConfig ? symbolConfig.apiSymbol : symbol;
   
   // Check cache first
   const cached = quoteCache.get(symbol);
@@ -221,10 +219,14 @@ export async function getQuote(symbol: MarketSymbol): Promise<MarketQuote | null
   }
 
   // Fetch new data
-  const request = fetchQuote(symbol).then((result) => {
-    quoteCache.set(symbol, { data: result, timestamp: now });
+  const request = fetchQuote(requestSymbol).then((result) => {
+    if (result) {
+      quoteCache.set(symbol, { data: result, timestamp: now });
+    } else if (cached?.data) {
+      quoteCache.set(symbol, { data: cached.data, timestamp: now });
+    }
     pendingRequests.delete(symbol);
-    return result;
+    return result ?? cached?.data ?? null;
   });
 
   pendingRequests.set(symbol, request);
@@ -236,7 +238,7 @@ export async function getQuote(symbol: MarketSymbol): Promise<MarketQuote | null
  */
 export async function getQuotes(
   symbols: MarketSymbol[],
-  concurrency: number = 5
+  concurrency: number = 2
 ): Promise<Map<MarketSymbol, MarketQuote | null>> {
   const results = new Map<MarketSymbol, MarketQuote | null>();
   
@@ -253,6 +255,8 @@ export async function getQuotes(
     batchResults.forEach(({ symbol, quote }) => {
       results.set(symbol, quote);
     });
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
 
   return results;

@@ -59,7 +59,7 @@ function MarketCategoryGroup({
 }) {
   const tokens = getThemeTokens(theme);
   
-  if (items.every(item => item.quote === null)) {
+  if (items.length === 0) {
     return null;
   }
 
@@ -259,9 +259,9 @@ export function MarketDataPanel({
 
   // Group data by category
   const groupedData = {
+    bonds: marketData.filter(d => MARKET_SYMBOLS[d.symbol as keyof typeof MARKET_SYMBOLS]?.category === 'bonds'),
     indices: marketData.filter(d => MARKET_SYMBOLS[d.symbol as keyof typeof MARKET_SYMBOLS]?.category === 'indices'),
     forex: marketData.filter(d => MARKET_SYMBOLS[d.symbol as keyof typeof MARKET_SYMBOLS]?.category === 'forex'),
-    crypto: marketData.filter(d => MARKET_SYMBOLS[d.symbol as keyof typeof MARKET_SYMBOLS]?.category === 'crypto'),
     commodities: marketData.filter(d => MARKET_SYMBOLS[d.symbol as keyof typeof MARKET_SYMBOLS]?.category === 'commodities'),
   };
 
@@ -393,6 +393,12 @@ export function MarketDataPanel({
         ) : (
           <>
             <MarketCategoryGroup
+              title="US Treasuries"
+              items={groupedData.bonds}
+              theme={theme}
+              symbols={MARKET_SYMBOLS}
+            />
+            <MarketCategoryGroup
               title="Indices"
               items={groupedData.indices}
               theme={theme}
@@ -401,12 +407,6 @@ export function MarketDataPanel({
             <MarketCategoryGroup
               title="Forex"
               items={groupedData.forex}
-              theme={theme}
-              symbols={MARKET_SYMBOLS}
-            />
-            <MarketCategoryGroup
-              title="Crypto"
-              items={groupedData.crypto}
               theme={theme}
               symbols={MARKET_SYMBOLS}
             />

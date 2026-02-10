@@ -22,14 +22,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(
-      `${ALPHA_VANTAGE_BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`,
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
+    const isFxPair = symbol.startsWith('FX:');
+    const queryUrl = isFxPair
+      ? (() => {
+          const [, fromCurrency, toCurrency] = symbol.split(':');
+          return `${ALPHA_VANTAGE_BASE_URL}?function=CURRENCY_EXCHANGE_RATE&from_currency=${fromCurrency}&to_currency=${toCurrency}&apikey=${apiKey}`;
+        })()
+      : `${ALPHA_VANTAGE_BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
+
+    const response = await fetch(queryUrl, {
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       return NextResponse.json(
@@ -47,25 +52,59 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Rate limit or API error' }, { status: 429 });
     }
 
-    // Parse GLOBAL_QUOTE response
-    const quoteData = data['Global Quote'];
-    if (!quoteData || Object.keys(quoteData).length === 0) {
-      return NextResponse.json({ error: 'No data available' }, { status: 404 });
-    }
-
-    const result = {
-      symbol,
-      price: parseFloat(quoteData['05. price'] || '0'),
-      change: parseFloat(quoteData['09. change'] || '0'),
-      changePercent: parseFloat(quoteData['10. change percent']?.replace('%', '') || '0'),
-      previousClose: parseFloat(quoteData['08. previous close'] || '0'),
-      open: parseFloat(quoteData['02. open'] || '0'),
-      high: parseFloat(quoteData['03. high'] || '0'),
-      low: parseFloat(quoteData['04. low'] || '0'),
-      volume: parseInt(quoteData['06. volume'] || '0'),
-      latestTradingDay: quoteData['07. latest trading day'] || '',
-      timestamp: Date.now(),
+    let result: {
+      symbol: string;
+      price: number;
+      change: number;
+      changePercent: number;
+      previousClose: number;
+      open: number;
+      high: number;
+      low: number;
+      volume: number;
+      latestTradingDay: string;
+      timestamp: number;
     };
+    if (isFxPair) {
+      const fxData = data['Realtime Currency Exchange Rate'];
+      if (!fxData || Object.keys(fxData).length === 0) {
+        return NextResponse.json({ error: 'No data available' }, { status: 404 });
+      }
+
+      result = {
+        symbol,
+        price: parseFloat(fxData['5. Exchange Rate'] || '0'),
+        change: 0,
+        changePercent: 0,
+        previousClose: 0,
+        open: 0,
+        high: 0,
+        low: 0,
+        volume: 0,
+        latestTradingDay: fxData['6. Last Refreshed'] || '',
+        timestamp: Date.now(),
+      };
+    } else {
+      // Parse GLOBAL_QUOTE response
+      const quoteData = data['Global Quote'];
+      if (!quoteData || Object.keys(quoteData).length === 0) {
+        return NextResponse.json({ error: 'No data available' }, { status: 404 });
+      }
+
+      result = {
+        symbol,
+        price: parseFloat(quoteData['05. price'] || '0'),
+        change: parseFloat(quoteData['09. change'] || '0'),
+        changePercent: parseFloat(quoteData['10. change percent']?.replace('%', '') || '0'),
+        previousClose: parseFloat(quoteData['08. previous close'] || '0'),
+        open: parseFloat(quoteData['02. open'] || '0'),
+        high: parseFloat(quoteData['03. high'] || '0'),
+        low: parseFloat(quoteData['04. low'] || '0'),
+        volume: parseInt(quoteData['06. volume'] || '0'),
+        latestTradingDay: quoteData['07. latest trading day'] || '',
+        timestamp: Date.now(),
+      };
+    }
 
     return NextResponse.json(result, {
       headers: {

@@ -25,7 +25,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { spacing } from '@/styles/spacing';
 import { getThemeTokens, Theme } from '@/styles/designTokens';
 import { DisplayMode } from '@/types/news';
@@ -120,7 +120,7 @@ export function MapSection({
   return (
     <div
       style={{
-        flex: `${width} 1 0%`,
+        flex: `0 0 ${Math.max(10, Math.min(85, width * 100))}%`,
         borderRight: `1px solid ${tokens.border.default}`,
         overflow: 'hidden',
         position: 'relative',
@@ -148,7 +148,7 @@ export function NewsSection({
   return (
     <div
       style={{
-        flex: `${width} 1 0%`,
+        flex: `0 0 ${Math.max(10, Math.min(85, width * 100))}%`,
         borderRight: `1px solid ${tokens.border.default}`,
         overflow: 'hidden',
         display: 'flex',
@@ -237,6 +237,11 @@ export function TerminalLayout({
 }: TerminalLayoutProps) {
   const { displayMode, config } = useDisplayMode();
   const [marketCollapsed, setMarketCollapsed] = useState(false);
+  const [mapWidth, setMapWidth] = useState<number>(0.6);
+  const [newsWidth, setNewsWidth] = useState<number>(0.3);
+  const [marketWidth, setMarketWidth] = useState<number>(spacing.layout.panelWidth);
+  const [dragging, setDragging] = useState<'map-news' | 'news-market' | null>(null);
+  const mainRef = useRef<HTMLDivElement | null>(null);
   const tokens = getThemeTokens(theme);
 
   // Calculate section widths based on display mode
@@ -253,6 +258,51 @@ export function TerminalLayout({
   };
 
   const widths = getWidths();
+
+  useEffect(() => {
+    setMapWidth(widths.map);
+    setNewsWidth(widths.news);
+    setMarketWidth(spacing.layout.panelWidth);
+  }, [widths.map, widths.news]);
+
+  useEffect(() => {
+    if (!dragging) return;
+
+    const onMouseMove = (event: MouseEvent) => {
+      const container = mainRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+
+      if (dragging === 'map-news') {
+        const available = Math.max(1, rect.width - (showMarket ? marketWidth : 0));
+        const nextMap = Math.max(0.35, Math.min(0.8, x / available));
+        const nextNews = Math.max(0.15, 1 - nextMap);
+        setMapWidth(nextMap);
+        setNewsWidth(nextNews);
+      }
+
+      if (dragging === 'news-market' && showMarket) {
+        const nextMarket = Math.max(220, Math.min(460, rect.width - x));
+        const available = Math.max(1, rect.width - nextMarket);
+        const total = mapWidth + newsWidth;
+        const ratio = total > 0 ? mapWidth / total : 0.6;
+        setMarketWidth(nextMarket);
+        setMapWidth(Math.max(0.3, Math.min(0.8, ratio)));
+        setNewsWidth(Math.max(0.15, Math.min(0.7, 1 - ratio)));
+      }
+    };
+
+    const onMouseUp = () => setDragging(null);
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [dragging, mapWidth, newsWidth, marketWidth, showMarket]);
 
   return (
     <div
@@ -276,26 +326,59 @@ export function TerminalLayout({
 
       {/* Main Content */}
       <MainContent>
+        <div ref={mainRef} style={{ display: 'flex', width: '100%', height: '100%' }}>
         {/* Map Area */}
-        <MapSection width={widths.map} theme={theme}>
+        <MapSection width={mapWidth} theme={theme}>
           {children.map}
         </MapSection>
 
+        <button
+          type="button"
+          onMouseDown={() => setDragging('map-news')}
+          style={{
+            width: 6,
+            cursor: 'col-resize',
+            backgroundColor: dragging === 'map-news' ? tokens.accent.info : tokens.border.default,
+            opacity: 0.8,
+            flexShrink: 0,
+            border: 'none',
+            padding: 0,
+          }}
+          aria-label="Resize map and news panels"
+        />
+
         {/* News Area */}
-        <NewsSection width={widths.news} theme={theme}>
+        <NewsSection width={newsWidth} theme={theme}>
           {children.news}
         </NewsSection>
 
         {/* Market Panel */}
         {showMarket && widths.market > 0 && (
+          <>
+          <button
+            type="button"
+            onMouseDown={() => setDragging('news-market')}
+            style={{
+              width: 6,
+              cursor: 'col-resize',
+              backgroundColor: dragging === 'news-market' ? tokens.accent.info : tokens.border.default,
+              opacity: 0.8,
+              flexShrink: 0,
+              border: 'none',
+              padding: 0,
+            }}
+            aria-label="Resize news and market panels"
+          />
           <MarketSection 
             collapsed={marketCollapsed}
-            width={spacing.layout.panelWidth}
+            width={marketWidth}
             theme={theme}
           >
             {children.market}
           </MarketSection>
+          </>
         )}
+        </div>
       </MainContent>
 
       {/* Status Bar */}
