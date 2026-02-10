@@ -11,9 +11,10 @@ interface NewsFeedProps {
     selectedId: string | null;
     onSelect: (id: string) => void;
     theme?: Theme;
+    hasLoaded?: boolean;
 }
 
-export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, theme = 'dark' }) => {
+export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, theme = 'dark', hasLoaded = false }) => {
     const t = useTranslations('NewsFeed');
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const tokens = getThemeTokens(theme);
@@ -98,7 +99,7 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
 
             {news.length === 0 && (
                 <div className="flex-1 flex items-center justify-center text-[var(--muted)] text-sm">
-                    {t('loading')}
+                    {hasLoaded ? 'No news available' : t('loading')}
                 </div>
             )}
         </div>

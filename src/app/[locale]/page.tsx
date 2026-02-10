@@ -40,6 +40,7 @@ function PageContent({ locale }: { locale: string }) {
     contentLanguage: locale === 'zh' ? 'zh' : 'en',
   });
   const [isOnline, setIsOnline] = useState(true);
+  const [hasLoadedNews, setHasLoadedNews] = useState(false);
   const [latency, setLatency] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
   const [marketExpanded, setMarketExpanded] = useState(true);
@@ -55,13 +56,15 @@ function PageContent({ locale }: { locale: string }) {
   useEffect(() => {
     async function fetchSources() {
       const start = Date.now();
-      const { data } = await supabase.from('rss_sources').select('*');
+      const { data, error } = await supabase.from('rss_sources').select('*');
       setLatency(Date.now() - start);
-      if (data) {
-        setSources(data);
-        setIsOnline(true);
-      } else {
+      if (error) {
         setIsOnline(false);
+        return;
+      }
+      if (data) {
+        setSources(data as RSSSource[]);
+        setIsOnline(true);
       }
     }
     fetchSources();
@@ -70,8 +73,6 @@ function PageContent({ locale }: { locale: string }) {
   // Fetch News and Merge with Source Info
   useEffect(() => {
     async function fetchNews() {
-      if (sources.length === 0) return;
-
       const start = Date.now();
       let query = supabase
         .from('news_items')
@@ -94,7 +95,7 @@ function PageContent({ locale }: { locale: string }) {
             const source = sources.find(s => s.id === item.source_id);
             return {
               ...item,
-              source_name: source?.name || 'Unknown Source',
+              source_name: source?.name || item.source_id || 'Unknown Source',
               source_language: source?.language || 'en'
             };
           })
@@ -121,13 +122,15 @@ function PageContent({ locale }: { locale: string }) {
         console.error('Error loading news:', error);
         setIsOnline(false);
       }
+
+      setHasLoadedNews(true);
     }
 
     fetchNews();
 
     const interval = setInterval(fetchNews, 60000);
     return () => clearInterval(interval);
-  }, [filters, sources, locale]);
+  }, [filters, sources]);
 
   const handleNewsSelect = useCallback((newsId: string) => {
     setSelectedId(newsId);
@@ -171,6 +174,7 @@ function PageContent({ locale }: { locale: string }) {
             selectedId={selectedId}
             onSelect={setSelectedId}
             theme={theme}
+            hasLoaded={hasLoadedNews}
           />
         ),
         market: (
