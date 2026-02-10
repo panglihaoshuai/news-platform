@@ -29,6 +29,7 @@ export interface NewsItem {
 export interface NewsFilters {
     timeRange: string; // '24h', '7d', '30d', '1y'
     region: string;    // 'global', 'NA', 'EU', 'AS', etc.
+    country: string;   // 'all', 'US', 'CN', etc.
     categories: string[];
     density: 'low' | 'medium' | 'high';
     contentLanguage: 'en' | 'zh' | 'all';

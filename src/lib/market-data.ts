@@ -23,38 +23,56 @@ const API_PROXY_URL = '/api/market-data';
 
 // Supported market symbols with display information
 export const MARKET_SYMBOLS = {
-  // Indices (Stock Market)
-  'SPX': { 
-    name: 'S&P 500', 
-    category: 'indices',
-    displayOrder: 1,
-    unit: undefined as string | undefined,
-  },
-  'IXIC': { 
-    name: 'NASDAQ', 
-    category: 'indices',
-    displayOrder: 2,
-    unit: undefined as string | undefined,
-  },
-  'DJI': { 
-    name: 'Dow Jones', 
-    category: 'indices',
-    displayOrder: 3,
-    unit: undefined as string | undefined,
-  },
-  
   // Commodities
   'GLD': { 
     name: 'Gold', 
     category: 'commodities',
     unit: 'USD/oz',
-    displayOrder: 4,
+    displayOrder: 1,
   },
   'CL': { 
     name: 'Oil', 
     category: 'commodities',
     unit: 'USD/bbl',
+    displayOrder: 2,
+  },
+  'SLV': {
+    name: 'Silver',
+    category: 'commodities',
+    unit: 'USD/oz',
+    displayOrder: 3,
+  },
+  'USO': {
+    name: 'Crude ETF',
+    category: 'commodities',
+    unit: 'USD',
+    displayOrder: 4,
+  },
+  'UNG': {
+    name: 'Nat Gas ETF',
+    category: 'commodities',
+    unit: 'USD',
     displayOrder: 5,
+  },
+
+  // Indices (Stock Market)
+  'SPX': {
+    name: 'S&P 500',
+    category: 'indices',
+    displayOrder: 6,
+    unit: undefined as string | undefined,
+  },
+  'IXIC': {
+    name: 'NASDAQ',
+    category: 'indices',
+    displayOrder: 7,
+    unit: undefined as string | undefined,
+  },
+  'DJI': {
+    name: 'Dow Jones',
+    category: 'indices',
+    displayOrder: 8,
+    unit: undefined as string | undefined,
   },
   
   // Cryptocurrencies
@@ -62,26 +80,26 @@ export const MARKET_SYMBOLS = {
     name: 'Bitcoin', 
     category: 'crypto',
     unit: 'USD',
-    displayOrder: 6,
+    displayOrder: 9,
   },
   'ETH': { 
     name: 'Ethereum', 
     category: 'crypto',
     unit: 'USD',
-    displayOrder: 7,
+    displayOrder: 10,
   },
   
   // Forex
   'USDCNY': { 
     name: 'USD/CNY', 
     category: 'forex',
-    displayOrder: 8,
+    displayOrder: 11,
     unit: undefined as string | undefined,
   },
   'EURUSD': { 
     name: 'EUR/USD', 
     category: 'forex',
-    displayOrder: 9,
+    displayOrder: 12,
     unit: undefined as string | undefined,
   },
 } as const;

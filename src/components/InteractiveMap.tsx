@@ -213,7 +213,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             map.current.on('mouseenter', 'unclustered-point', setPointer);
             map.current.on('mouseleave', 'unclustered-point', resetPointer);
         }
-    }, [news, isLoaded, onSelect, tokens, displayMode]);
+    }, [news, isLoaded, onSelect, tokens]);
 
     // Camera Synchronization (FlyTo) - Independent Effect
     useEffect(() => {
@@ -243,7 +243,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 <div 
                     className="w-2 h-2 rounded-full animate-pulse"
                     style={{ 
-                        backgroundColor: userInteracted.current ? tokens.text.disabled : tokens.accent.up 
+                        backgroundColor: userInteracted.current ? tokens.text.disabled : '#ef4444' 
                     }} 
                 />
                 <span 

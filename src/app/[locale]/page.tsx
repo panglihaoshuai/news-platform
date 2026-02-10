@@ -35,9 +35,10 @@ function PageContent({ locale }: { locale: string }) {
   const [filters, setFilters] = useState<NewsFilters>({
     timeRange: '24h',
     region: 'global',
+    country: 'all',
     categories: [],
-    density: 'medium',
-    contentLanguage: locale === 'zh' ? 'zh' : 'en',
+    density: 'high',
+    contentLanguage: 'all',
   });
   const [isOnline, setIsOnline] = useState(true);
   const [hasLoadedNews, setHasLoadedNews] = useState(false);
@@ -81,6 +82,10 @@ function PageContent({ locale }: { locale: string }) {
 
       if (filters.region !== 'global') {
         query = query.eq('region_code', filters.region);
+      }
+
+      if (filters.country !== 'all') {
+        query = query.eq('country_code', filters.country);
       }
 
       const limit = filters.density === 'low' ? 20 : filters.density === 'medium' ? 50 : 100;
@@ -169,13 +174,23 @@ function PageContent({ locale }: { locale: string }) {
           />
         ),
         news: (
-          <NewsFeed
-            news={news}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            theme={theme}
-            hasLoaded={hasLoadedNews}
-          />
+          <>
+            <Filters
+              filters={filters}
+              onChange={setFilters}
+              theme={theme}
+              mapDisplayMode={mapDisplayMode}
+              onMapModeChange={setMapDisplayMode}
+              countries={Array.from(new Set(sources.map((s) => s.country_code).filter(Boolean)))}
+            />
+            <NewsFeed
+              news={news}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              theme={theme}
+              hasLoaded={hasLoadedNews}
+            />
+          </>
         ),
         market: (
           <MarketDataPanel

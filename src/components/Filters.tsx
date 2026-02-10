@@ -13,6 +13,7 @@ interface FiltersProps {
     onThemeChange?: (theme: Theme) => void;
     mapDisplayMode?: MapDisplayMode;
     onMapModeChange?: (mode: MapDisplayMode) => void;
+    countries?: string[];
 }
 
 export const Filters: React.FC<FiltersProps> = ({ 
@@ -21,7 +22,8 @@ export const Filters: React.FC<FiltersProps> = ({
     theme = 'dark',
     onThemeChange,
     mapDisplayMode = 'all',
-    onMapModeChange
+    onMapModeChange,
+    countries = ['US', 'CN', 'GB', 'JP', 'DE', 'FR', 'RU', 'IN']
 }) => {
     const t = useTranslations('HomePage.filters');
     const tokens = getThemeTokens(theme);
@@ -99,6 +101,26 @@ export const Filters: React.FC<FiltersProps> = ({
                                 }`}
                         >
                             {lang}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Country Selector */}
+            <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Country</span>
+                <div className="flex bg-zinc-900 rounded-md p-1">
+                    {(['all', ...countries] as const).slice(0, 9).map((country) => (
+                        <button
+                            key={country}
+                            type="button"
+                            onClick={() => onChange({ ...filters, country })}
+                            className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${filters.country === country
+                                ? 'bg-zinc-700 text-white shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-300'
+                                }`}
+                        >
+                            {country}
                         </button>
                     ))}
                 </div>
