@@ -6,6 +6,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
+const STOOQ_BASE_URL = 'https://stooq.com/q/l/';
+
+function toStooqSymbol(symbol: string): string {
+  if (symbol.startsWith('FX:')) {
+    const [, fromCurrency, toCurrency] = symbol.split(':');
+    return `${fromCurrency}${toCurrency}`.toLowerCase();
+  }
+  return `${symbol.toLowerCase()}.us`;
+}
+
+async function fetchStooqQuote(symbol: string): Promise<{
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  previousClose: number;
+  open: number;
+  high: number;
+  low: number;
+  volume: number;
+  latestTradingDay: string;
+  timestamp: number;
+} | null> {
+  const stooqSymbol = toStooqSymbol(symbol);
+  const response = await fetch(`${STOOQ_BASE_URL}?s=${stooqSymbol}&i=d`, {
+    headers: { Accept: 'text/plain' },
+  });
+
+  if (!response.ok) return null;
+  const text = (await response.text()).trim();
+  const parts = text.split(',');
+  if (parts.length < 8 || parts[1] === 'N/D') return null;
+
+  const open = parseFloat(parts[3] || '0');
+  const high = parseFloat(parts[4] || '0');
+  const low = parseFloat(parts[5] || '0');
+  const close = parseFloat(parts[6] || '0');
+  const volume = parseInt(parts[7] || '0');
+  const previousClose = open || close;
+  const change = close - previousClose;
+  const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+
+  return {
+    symbol,
+    price: close,
+    change,
+    changePercent,
+    previousClose,
+    open,
+    high,
+    low,
+    volume,
+    latestTradingDay: parts[1] || '',
+    timestamp: Date.now(),
+  };
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -46,9 +102,15 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     // Check for rate limiting or errors
-    if (data.Information?.includes('API rate limit') ||
-        data.Note?.includes('API rate limit') ||
-        data['Error Message']) {
+    if (data.Information || data.Note || data['Error Message']) {
+      const fallback = await fetchStooqQuote(symbol);
+      if (fallback) {
+        return NextResponse.json(fallback, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+          },
+        });
+      }
       return NextResponse.json({ error: 'Rate limit or API error' }, { status: 429 });
     }
 
@@ -68,7 +130,15 @@ export async function GET(request: NextRequest) {
     if (isFxPair) {
       const fxData = data['Realtime Currency Exchange Rate'];
       if (!fxData || Object.keys(fxData).length === 0) {
-        return NextResponse.json({ error: 'No data available' }, { status: 404 });
+        const fallback = await fetchStooqQuote(symbol);
+        if (!fallback) {
+          return NextResponse.json({ error: 'No data available' }, { status: 404 });
+        }
+        return NextResponse.json(fallback, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+          },
+        });
       }
 
       result = {
@@ -88,7 +158,15 @@ export async function GET(request: NextRequest) {
       // Parse GLOBAL_QUOTE response
       const quoteData = data['Global Quote'];
       if (!quoteData || Object.keys(quoteData).length === 0) {
-        return NextResponse.json({ error: 'No data available' }, { status: 404 });
+        const fallback = await fetchStooqQuote(symbol);
+        if (!fallback) {
+          return NextResponse.json({ error: 'No data available' }, { status: 404 });
+        }
+        return NextResponse.json(fallback, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+          },
+        });
       }
 
       result = {

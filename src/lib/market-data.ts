@@ -145,7 +145,7 @@ export interface MarketDataState {
 async function fetchQuote(symbol: string): Promise<MarketQuote | null> {
   try {
     const response = await fetch(
-      `${API_PROXY_URL}?symbol=${symbol}`
+      `${API_PROXY_URL}?symbol=${encodeURIComponent(symbol)}`
     );
 
     if (!response.ok) {

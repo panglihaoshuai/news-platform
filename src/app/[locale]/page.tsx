@@ -14,6 +14,7 @@ import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useMapDisplayMode } from '@/hooks/useMapDisplayMode';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { createClient } from '@supabase/supabase-js';
+import { getCountriesByRegion } from '@/config/region-mapping';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +56,10 @@ function PageContent({ locale }: { locale: string }) {
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
   const [marketExpanded, setMarketExpanded] = useState(true);
   const latestTopNewsIdRef = useRef<string | null>(null);
+
+  const countryOptions = filters.region === 'global'
+    ? availableCountries
+    : getCountriesByRegion(filters.region).map((country) => country.code);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -227,7 +232,7 @@ function PageContent({ locale }: { locale: string }) {
               theme={theme}
               mapDisplayMode={mapDisplayMode}
               onMapModeChange={setMapDisplayMode}
-              countries={availableCountries}
+              countries={countryOptions}
             />
             <NewsFeed
               news={news}
