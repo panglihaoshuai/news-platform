@@ -14,7 +14,7 @@ import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useMapDisplayMode } from '@/hooks/useMapDisplayMode';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { createClient } from '@supabase/supabase-js';
-import { getCountriesByRegion } from '@/config/region-mapping';
+import { getCountriesByRegion, getCountryByCode, COUNTRIES } from '@/config/region-mapping';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,7 +100,11 @@ function PageContent({ locale }: { locale: string }) {
       }
 
       if (filters.country !== 'all') {
-        query = query.eq('country_code', filters.country);
+        // Convert ISO country code to full country name for database query
+        const countryInfo = getCountryByCode(filters.country);
+        if (countryInfo) {
+          query = query.eq('country_code', countryInfo.name);
+        }
       }
 
       const limit = filters.density === 'low' ? 20 : filters.density === 'medium' ? 50 : 100;
@@ -110,14 +114,24 @@ function PageContent({ locale }: { locale: string }) {
       setLatency(Date.now() - start);
 
       if (data) {
-        const countryCodes = Array.from(
+        // Convert full country names to ISO codes for filter buttons
+        const countryNames = Array.from(
           new Set(
             data
               .map((item) => item.country_code)
               .filter((code): code is string => Boolean(code))
           )
-        ).sort();
-        setAvailableCountries(countryCodes);
+        );
+        // Map country names to ISO codes
+        const countryCodeMap: Record<string, string> = {};
+        COUNTRIES.forEach(c => {
+          countryCodeMap[c.name.toLowerCase()] = c.code;
+          countryCodeMap[c.code.toLowerCase()] = c.code;
+        });
+        const isoCodes = countryNames
+          .map(name => countryCodeMap[name.toLowerCase()])
+          .filter(Boolean);
+        setAvailableCountries(isoCodes);
 
         const enrichedNews: NewsItem[] = data
           .map(item => {
@@ -133,11 +147,24 @@ function PageContent({ locale }: { locale: string }) {
               return false;
             }
             
+            // Category filtering based on title keywords since database stores "General"
             if (filters.categories && filters.categories.length > 0) {
-              const itemCategories = item.categories || [];
-              const hasMatchingCategory = filters.categories.some(cat => 
-                itemCategories.includes(cat)
-              );
+              const title = item.title?.toLowerCase() || '';
+              const categoryKeywords: Record<string, string[]> = {
+                politics: ['politic', 'election', 'government', 'president', 'minister', 'parliament', 'vote', 'party', 'trump', 'biden', 'congress', 'policy', 'sanction', 'diplomat', 'war', 'peace', 'treaty', 'summit'],
+                military: ['military', 'army', 'weapon', 'defense', 'attack', 'bomb', 'missile', 'navy', 'air force', 'soldier', 'combat', 'invasion', 'gaza', 'israel', 'iran', 'ukraine'],
+                economy: ['economy', 'economic', 'market', 'stock', 'trade', 'tariff', 'gdp', 'inflation', 'recession', 'bank', 'financial', 'investment', 'business', 'company', 'growth', 'revenue', 'profit'],
+                technology: ['technology', 'tech', 'ai', 'artificial intelligence', 'digital', 'internet', 'cyber', 'software', 'app', 'google', 'apple', 'microsoft', 'amazon', 'meta', 'chip', 'semiconductor'],
+                environment: ['environment', 'climate', 'pollution', 'carbon', 'green', 'renewable', 'energy', 'oil', 'gas', 'fossil', 'warming', 'weather', 'disaster', 'earthquake', 'flood'],
+                society: ['society', 'social', 'protest', 'strike', 'rights', 'justice', 'crime', 'police', 'court', 'law', 'education', 'health', 'medical', 'covid', 'pandemic'],
+                sports: ['sports', 'sport', 'football', 'soccer', 'basketball', 'baseball', 'tennis', 'olympic', 'game', 'match', 'team', 'player', 'champion', 'league', 'tournament'],
+                entertainment: ['entertainment', 'celebrity', 'movie', 'film', 'music', 'album', 'concert', 'show', 'tv', 'hollywood', 'actor', 'actress', 'star', 'festival']
+              };
+              
+              const hasMatchingCategory = filters.categories.some(cat => {
+                const keywords = categoryKeywords[cat] || [];
+                return keywords.some(keyword => title.includes(keyword));
+              });
               if (!hasMatchingCategory) return false;
             }
             
