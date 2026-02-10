@@ -18,7 +18,8 @@
  * @date 2026-02-09
  */
 
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import Parser from 'rss-parser';
@@ -229,8 +230,15 @@ async function fetchFromGdeltApi(): Promise<{ fetched: number; items: UnifiedNew
       console.log(`      ✅ ${source.name}: ${articles.length} articles`);
 
       // Transform articles with source context
-      const sourceItems = gdeltTransformer.transformGdeltBatch(articles, source);
-      items.push(...sourceItems);
+      try {
+        const sourceItems = gdeltTransformer.transformGdeltBatch(articles, source);
+        console.log(`      ✅ ${source.name}: ${articles.length} articles, ${sourceItems.length} transformed`);
+        items.push(...sourceItems);
+      } catch (transformError: any) {
+        console.error(`      ❌ ${source.name} transformation failed: ${transformError.message}`);
+        console.error(`      Stack: ${transformError.stack}`);
+        errors.push(`${source.name}: transformation - ${transformError.message}`);
+      }
 
       // Rate limiting between requests
       await sleep(CONFIG.gdelt.requestDelayMs);
@@ -292,6 +300,7 @@ async function insertNewsItems(
           source_tier: item.source_tier,
           fetched_at: item.fetched_at,
           importance_factors: item.importance_factors,
+          is_crisis: item.is_crisis,  // Crisis detection based on keywords
           external_id: item.external_id,
         })),
         {
@@ -501,7 +510,7 @@ async function fetchHybrid(): Promise<FetchMetricsRecord> {
   let totalInserted = 0;
   const failedSources: string[] = [];
   const apiUsage = {
-    newsdata: { used: 0, limit: CONFIG.newsdata.maxRequestsPerHour },
+    newsdata: { used: 0, limit: CONFIG.newsdata.maxRequestsPerHour, remaining: CONFIG.newsdata.maxRequestsPerHour },
     rss: { used: 0, success: 0, failed: 0 },
     gdelt: { used: 0, limit: 1 },
   };

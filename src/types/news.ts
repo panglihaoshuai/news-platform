@@ -112,7 +112,22 @@ export interface MapFilters {
     contentLanguage: 'en' | 'zh' | 'all';
     displayMode: MapDisplayMode;   // [新增] 地图显示模式
     priorityFilter: Priority[];    // [新增] 优先级过滤
-    heatThreshold?: number;        // [新增] 热度阈值
+    heatThreshold?: number;       // [新增] 热度阈值
+    sentimentFilter?: SentimentFilter; // [新增] 情感过滤
+    crisisOnly?: boolean;         // [新增] 只显示危机新闻
+}
+
+/**
+ * Sentiment Filter - 情感过滤选项
+ */
+export type SentimentFilter = 'all' | 'positive' | 'neutral' | 'negative';
+
+/**
+ * Sentiment Range - 情感范围过滤
+ */
+export interface SentimentRange {
+    min?: number;  // 最小 tone 值
+    max?: number;   // 最大 tone 值
 }
 
 // ============================================================================

@@ -317,8 +317,8 @@ export class DataCleaner {
       $('textarea').remove();
       
       // Remove comments
-      $('*').contents().each(function () {
-        if (this.type === 'comment') {
+      $('*').contents().each(function (this: Node) {
+        if (this.nodeType === Node.COMMENT_NODE) {
           $(this).remove();
         }
       });

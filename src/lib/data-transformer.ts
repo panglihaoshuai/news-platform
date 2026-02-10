@@ -101,22 +101,26 @@ export class NewsDataTransformer {
       fetched_at: new Date().toISOString(),
       geo_lat: geo.lat,
       geo_lng: geo.lng,
-      region_code: geo.region,
+      region_code: geo.region as import('@/types/unified-news').RegionCode | null,
       country_code: geo.code,
       language,
       categories,
       priority,
       importance_score: this.calculateImportanceScore(importanceFactors),
       importance_factors: importanceFactors,
+      // New fields for balanced news architecture
+      domain: 'general',
+      domain_confidence: 0.5,
+      domain_keywords: [],
+      geo_perspective: 'international',
+      media_affiliation: 'neutral',
+      target_audience: 'international',
+      is_crisis: false,
       classification_source: 'keyword',
       classification_confidence: 0.7,
       created_at: new Date().toISOString(),
     };
   }
-
-  // ============================================================================
-  // RSS Transformation
-  // ============================================================================
 
   /**
    * Transform RSS item to unified format
@@ -130,7 +134,7 @@ export class NewsDataTransformer {
     // Clean and validate
     const title = this.cleaner.cleanTitle(item.title || 'No Title');
     const summary = this.cleaner.cleanSummary(
-      item.contentSnippet || item.summary || item.description || item.content || ''
+      item.contentSnippet || item.description || item.content || ''
     );
     const originalUrl = this.cleaner.standardizeUrl(item.link || '', source.config.feedUrl);
     const publishedAt = this.cleaner.standardizeDate(item.isoDate || item.pubDate || '');
@@ -172,13 +176,21 @@ export class NewsDataTransformer {
       fetched_at: new Date().toISOString(),
       geo_lat: geo.lat,
       geo_lng: geo.lng,
-      region_code: geo.region,
+      region_code: geo.region as import('@/types/unified-news').RegionCode | null,
       country_code: geo.code,
       language,
       categories,
       priority,
       importance_score: this.calculateImportanceScore(importanceFactors),
       importance_factors: importanceFactors,
+      // New fields for balanced news architecture
+      domain: 'general',
+      domain_confidence: 0.5,
+      domain_keywords: [],
+      geo_perspective: 'international',
+      media_affiliation: 'neutral',
+      target_audience: 'international',
+      is_crisis: false,
       classification_source: 'keyword',
       classification_confidence: 0.7,
       created_at: new Date().toISOString(),

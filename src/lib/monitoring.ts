@@ -38,19 +38,9 @@ export async function recordMetrics(metrics: FetchMetricsRecord): Promise<void> 
   }
 
   try {
-    const { error } = await supabase
-      .from('fetch_metrics')
-      .insert({
-        timestamp: metrics.timestamp,
-        total_fetched: metrics.total_fetched,
-        total_inserted: metrics.total_inserted,
-        total_duplicates: metrics.total_duplicates,
-        failed_sources: metrics.failed_sources,
-        api_usage: metrics.api_usage,
-        processing_time: metrics.processing_time,
-        status: metrics.status,
-        error_message: metrics.error_message,
-      });
+    const { error } = await (supabase
+      .from('fetch_metrics') as any)
+      .insert(metrics);
 
     if (error) {
       console.warn(`⚠️  Failed to record metrics: ${error.message}`);
@@ -74,8 +64,8 @@ export async function recordNewsDataUsage(
   }
 
   try {
-    const { error } = await supabase
-      .from('newsdata_usage')
+    const { error } = await (supabase
+      .from('newsdata_usage') as any)
       .upsert(
         {
           date,
@@ -153,19 +143,19 @@ export async function healthCheck(): Promise<HealthCheckResult> {
     if (supabase) {
       // Get today's API usage
       const today = new Date().toISOString().split('T')[0];
-      const { data: usageData } = await supabase
-        .from('newsdata_usage')
+      const { data: usageData } = await (supabase
+        .from('newsdata_usage') as any)
         .select('request_count, articles_fetched')
         .eq('date', today);
 
       if (usageData) {
-        apiUsage.newsdata.used = usageData.reduce((sum, u) => sum + u.request_count, 0);
+        apiUsage.newsdata.used = usageData.reduce((sum: number, u: any) => sum + u.request_count, 0);
         apiUsage.newsdata.remaining = Math.max(0, apiUsage.newsdata.limit - apiUsage.newsdata.used);
       }
 
       // Get last fetch time
-      const { data: lastFetchData } = await supabase
-        .from('rss_sources')
+      const { data: lastFetchData } = await (supabase
+        .from('rss_sources') as any)
         .select('last_fetched_at')
         .not('last_fetched_at', 'is', null)
         .order('last_fetched_at', { ascending: false })
@@ -176,14 +166,14 @@ export async function healthCheck(): Promise<HealthCheckResult> {
       }
 
       // Get RSS success/failed counts
-      const { data: sourceStats } = await supabase
-        .from('rss_sources')
+      const { data: sourceStats } = await (supabase
+        .from('rss_sources') as any)
         .select('success_rate, fetch_count');
 
       if (sourceStats) {
         let totalSuccess = 0;
         let totalFailed = 0;
-        sourceStats.forEach((s) => {
+        sourceStats.forEach((s: any) => {
           if (s.fetch_count && s.fetch_count > 0) {
             const successRate = s.success_rate || 100;
             const total = s.fetch_count;
@@ -303,13 +293,15 @@ export async function getFetchStats(
     throw new Error('Supabase not configured');
   }
 
-  const { data: metrics } = await supabase
-    .from('fetch_metrics')
+  const { data: metrics } = await (supabase
+    .from('fetch_metrics') as any)
     .select('*')
     .gte('timestamp', startDate)
     .lte('timestamp', endDate);
 
-  if (!metrics || metrics.length === 0) {
+  const typedMetrics = (metrics ?? []) as FetchMetricsRecord[];
+
+  if (!typedMetrics || typedMetrics.length === 0) {
     return {
       totalFetched: 0,
       totalInserted: 0,
@@ -319,24 +311,24 @@ export async function getFetchStats(
     };
   }
 
-  const totalFetched = metrics.reduce((sum, m) => sum + m.total_fetched, 0);
-  const totalInserted = metrics.reduce((sum, m) => sum + m.total_inserted, 0);
-  const totalProcessingTime = metrics.reduce((sum, m) => sum + m.processing_time, 0);
-  const avgProcessingTime = totalProcessingTime / metrics.length;
+  const totalFetched = typedMetrics.reduce((sum, m) => sum + m.total_fetched, 0);
+  const totalInserted = typedMetrics.reduce((sum, m) => sum + m.total_inserted, 0);
+  const totalProcessingTime = typedMetrics.reduce((sum, m) => sum + m.processing_time, 0);
+  const avgProcessingTime = totalProcessingTime / typedMetrics.length;
 
-  const successCount = metrics.filter((m) => m.status === 'success').length;
-  const successRate = (successCount / metrics.length) * 100;
+  const successCount = typedMetrics.filter((m) => m.status === 'success').length;
+  const successRate = (successCount / typedMetrics.length) * 100;
 
   // Count failed sources
   const failedCounts = new Map<string, number>();
-  metrics.forEach((m) => {
+  typedMetrics.forEach((m) => {
     (m.failed_sources || []).forEach((sourceId: string) => {
       failedCounts.set(sourceId, (failedCounts.get(sourceId) || 0) + 1);
     });
   });
 
   const topFailedSources = Array.from(failedCounts.entries())
-    .map(([id, failures]) => ({ id, failures }))
+    .map(([id, failures]) => ({ id, name: '', failures }))
     .sort((a, b) => b.failures - a.failures)
     .slice(0, 10);
 
@@ -352,5 +344,3 @@ export async function getFetchStats(
 // ============================================================================
 // Export
 // ============================================================================
-
-export type { HealthCheckResult };

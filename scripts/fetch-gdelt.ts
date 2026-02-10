@@ -388,7 +388,7 @@ async function fetchGdelt(): Promise<FetchMetricsRecord> {
     total_duplicates: result.fetched - inserted,
     failed_sources: result.errors.map((e, i) => `error_${i}`),
     api_usage: {
-      newsdata: { used: 0, limit: 0 },
+      newsdata: { used: 0, limit: 0, remaining: 0 },
       rss: { used: 0, success: result.errors.length === 0 ? 1 : 0, failed: result.errors.length },
     },
     processing_time: processingTime,

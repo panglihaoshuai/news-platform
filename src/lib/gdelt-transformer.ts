@@ -120,7 +120,8 @@ export class GdeltTransformer {
 
     // Clean and validate
     const title = this.cleaner.cleanTitle(article.title);
-    const summary = this.cleaner.cleanSummary(''); // GDELT doesn't provide summary
+    // Generate summary from title (GDELT doesn't provide article body)
+    const summary = this.generateSummaryFromTitle(title);
     const originalUrl = this.cleaner.standardizeUrl(article.url);
 
     // Determine source info
@@ -149,8 +150,13 @@ export class GdeltTransformer {
     // Extract categories from GDELT topics
     const categories = this.extractCategories(article.topics, source);
 
-    // Calculate priority
-    const priority = this.calculatePriority(sourceTier, categories, publishedAt);
+    // Crisis detection based on keywords in title (not GDELT tone - artlist mode doesn't provide it)
+    const crisisKeywords = ['war', 'crisis', 'attack', 'terror', 'murder', 'death', 'killed', 'wounded', 'conflict', 'disaster', 'emergency', 'breaking'];
+    const titleLower = title.toLowerCase();
+    const isCrisis = crisisKeywords.some(keyword => titleLower.includes(keyword));
+
+    // Calculate priority (crisis boosts priority)
+    const priority = this.calculatePriority(sourceTier, categories, publishedAt, isCrisis);
 
     // Calculate importance factors
     const authorityWeight = this.getAuthorityWeight(article.domain);
@@ -182,6 +188,14 @@ export class GdeltTransformer {
       priority,
       importance_score: this.calculateImportanceScore(importanceFactors),
       importance_factors: importanceFactors,
+      // New fields for balanced news architecture
+      domain: 'general',
+      domain_confidence: 0.5,
+      domain_keywords: [],
+      geo_perspective: 'international',
+      media_affiliation: 'neutral',
+      target_audience: 'international',
+      is_crisis: isCrisis,  // Crisis detection based on keywords
       classification_source: 'keyword',
       classification_confidence: 0.7,
       created_at: new Date().toISOString(),
@@ -238,12 +252,13 @@ export class GdeltTransformer {
   // ============================================================================
 
   /**
-   * Calculate priority based on source tier, categories, and freshness
-   */
+    * Calculate priority based on source tier, categories, freshness, and crisis flag
+    */
   private calculatePriority(
     tier: SourceTier,
     categories: string[],
-    pubDate: string
+    pubDate: string,
+    isCrisis: boolean = false
   ): Priority {
     // Base priority from tier
     const tierPriority: Record<SourceTier, number> = {
@@ -265,8 +280,12 @@ export class GdeltTransformer {
     const hoursAgo = this.cleaner.getHoursAgo(pubDate);
     const isRecent = hoursAgo <= 6;
 
-    // Adjust priority
-    if (hasUrgent && isRecent) {
+    // Crisis boost: crisis news always gets P0/P1 priority
+    if (isCrisis) {
+      priority = 1; // Always P0 for crisis
+    }
+    // Adjust priority for non-crisis
+    else if (hasUrgent && isRecent) {
       priority = Math.min(priority, 1); // P0
     } else if (hasUrgent || isRecent) {
       priority = Math.min(priority, 2); // P1
@@ -280,8 +299,8 @@ export class GdeltTransformer {
   // ============================================================================
 
   /**
-   * Calculate importance factors
-   */
+    * Calculate importance factors
+    */
   private calculateImportanceFactors(
     tier: SourceTier,
     freshnessScore: number,
@@ -297,8 +316,8 @@ export class GdeltTransformer {
   }
 
   /**
-   * Calculate overall importance score
-   */
+    * Calculate overall importance score
+    */
   private calculateImportanceScore(
     factors: UnifiedNewsItem['importance_factors']
   ): number {
@@ -507,11 +526,30 @@ export class GdeltTransformer {
   }
 
   /**
-   * Generate external ID from URL
-   */
+    * Generate external ID from URL
+    */
   private generateExternalId(url: string): string {
     // Use URL as external ID for deduplication
     return url;
+  }
+
+  /**
+    * Generate summary from title (GDELT doesn't provide article body)
+    * Creates a short description based on the title for display purposes
+    */
+  private generateSummaryFromTitle(title: string): string {
+    if (!title) return '';
+
+    // Remove extra whitespace and truncate if too long
+    const cleaned = title.replace(/\s+/g, ' ').trim();
+
+    // If title is short enough, use it as summary
+    if (cleaned.length <= 150) {
+      return cleaned;
+    }
+
+    // Otherwise, truncate with ellipsis
+    return cleaned.substring(0, 147) + '...';
   }
 
   // ============================================================================

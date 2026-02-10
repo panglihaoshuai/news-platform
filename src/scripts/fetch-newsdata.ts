@@ -51,7 +51,7 @@ const CONFIG = {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const newsDataApiKey = process.env.NEWS_DATA_API_KEY;
+  const newsDataApiKey = process.env.NEWS_DATA_API_KEY ?? '';
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing Supabase configuration');
@@ -210,8 +210,7 @@ async function fetchForSource(source: NewsSourceConfig): Promise<{
       .from('rss_sources')
       .update({
         last_fetched_at: new Date().toISOString(),
-        fetch_count: supabase.raw('fetch_count + 1'),
-      })
+      } as any)
       .eq('id', source.id);
 
     // Record API usage

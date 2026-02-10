@@ -26,6 +26,94 @@ export type NewsSourceType = 'newsdata' | 'rss' | 'rsshub' | 'gdelt';
  */
 export type SourceTier = 'tier1' | 'tier2' | 'tier3' | 'tier4';
 
+// ============================================================================
+// NEW: Domain and Perspective Types for 85% Implementation
+// ============================================================================
+
+/**
+ * News domain categories for classification
+ */
+export type Domain = 'politics' | 'finance' | 'technology' | 'sports' | 'society' | 'general';
+
+/**
+ * Geographic perspective of the source
+ */
+export type GeographicPerspective = 'local' | 'regional' | 'international' | 'global';
+
+/**
+ * Media affiliation type
+ */
+export type MediaAffiliation = 'official' | 'independent' | 'opposition' | 'neutral' | 'semi-official';
+
+/**
+ * Target audience
+ */
+export type TargetAudience = 'domestic' | 'diaspora' | 'international' | 'regional';
+
+/**
+ * Political ideology (mainly for Western media)
+ */
+export type PoliticalIdeology = 'progressive' | 'centrist' | 'conservative';
+
+/**
+ * Perspective tags for news sources
+ * Enables filtering by viewpoint and audience
+ */
+export interface PerspectiveTags {
+  /** Geographic scope of the source's perspective */
+  geographic: GeographicPerspective;
+  /** Media affiliation/political relationship */
+  affiliation: MediaAffiliation;
+  /** Political ideology (optional, mainly Western media) */
+  ideology?: PoliticalIdeology;
+  /** Primary target audience */
+  audience: TargetAudience;
+  /** Human-readable description of the perspective */
+  description?: string;
+}
+
+/**
+ * Domain weights for each source (which topics they cover most)
+ */
+export interface DomainWeights {
+  /** General news percentage */
+  general?: number;
+  /** Politics percentage */
+  politics?: number;
+  /** Finance/Business percentage */
+  finance?: number;
+  /** Technology percentage */
+  technology?: number;
+  /** Sports percentage */
+  sports?: number;
+  /** Society/Culture percentage */
+  society?: number;
+  /** International relations percentage */
+  international?: number;
+}
+
+/**
+ * Event location extracted from news title
+ */
+export interface EventLocation {
+  /** Country where the event occurred */
+  country: string;
+  /** ISO country code */
+  countryCode: string;
+  /** City where the event occurred (optional) */
+  city?: string;
+  /** Region code */
+  region: RegionCode;
+  /** Latitude */
+  lat: number;
+  /** Longitude */
+  lng: number;
+  /** Confidence score (0-1) */
+  confidence: number;
+  /** Matched keyword that triggered extraction */
+  matchedKeyword: string;
+}
+
 /**
  * Language codes
  */
@@ -85,6 +173,10 @@ export interface NewsSourceConfig {
     /** Window size in minutes */
     windowMinutes: number;
   };
+  /** NEW: Perspective tags for filtering by viewpoint */
+  perspectiveTags?: PerspectiveTags;
+  /** NEW: Domain/topic coverage weights */
+  domainWeights?: DomainWeights;
 }
 
 /**
@@ -184,6 +276,42 @@ export interface UnifiedNewsItem {
   /** Priority level */
   priority: Priority;
 
+  // === NEW: Domain Classification ===
+  /** Domain classification: politics/finance/technology/sports/society/general */
+  domain: Domain;
+  /** Domain classification confidence (0-1) */
+  domain_confidence: number;
+  /** Keywords that triggered domain classification */
+  domain_keywords: string[];
+
+  // === NEW: Perspective Tags ===
+  /** Geographic perspective of the source */
+  geo_perspective: 'local' | 'regional' | 'international' | 'global';
+  /** Media affiliation type */
+  media_affiliation: 'official' | 'independent' | 'opposition' | 'neutral' | 'semi-official';
+  /** Political ideology (mainly Western media) */
+  political_ideology?: 'progressive' | 'centrist' | 'conservative';
+  /** Target audience */
+  target_audience: 'domestic' | 'diaspora' | 'international';
+  /** Human-readable perspective description */
+  perspective_description?: string;
+
+  // === NEW: Event Location (extracted from title) ===
+  /** Country where the news event occurred */
+  event_country?: string;
+  /** ISO country code for event location */
+  event_country_code?: string;
+  /** City where the news event occurred */
+  event_city?: string;
+  /** Region code for event location */
+  event_region_code?: RegionCode;
+  /** Event location confidence (0-1) */
+  event_confidence?: number;
+
+  // === CRISIS DETECTION (based on keywords, not GDELT tone) ===
+  /** Crisis detection based on keywords in title/content */
+  is_crisis?: boolean;
+
   // === Quality Fields ===
   /** Importance score (calculated) */
   importance_score: number;
@@ -198,6 +326,19 @@ export interface UnifiedNewsItem {
     /** Content bonus (based on LLM classification) */
     contentBonus: number;
   };
+  /** Social media engagement metrics (from GDELT) - NOT IMPLEMENTED, GDELT doesn't provide real-time social shares */
+  // social_shares?: {
+  //   facebook?: number;
+  //   twitter?: number;
+  //   gplus?: number;
+  //   linkedin?: number;
+  //   pinterest?: number;
+  //   stumbleupon?: number;
+  //   vk?: number;
+  //   whatsapp?: number;
+  //   telegram?: number;
+  //   email?: number;
+  // };
 
   // === Tracking Fields ===
   /** Classification source (keyword/llm) */
@@ -467,6 +608,7 @@ export interface FetchMetricsRecord {
     newsdata: {
       used: number;
       limit: number;
+      remaining: number;
     };
     rss: {
       used: number;
@@ -533,16 +675,3 @@ export interface ClassificationResult {
 // ============================================================================
 // Export
 // ============================================================================
-
-export type {
-  RSSFeed,
-  RSSItem,
-  NewsDataArticle,
-  NewsDataApiResponse,
-  NewsSourceRecord,
-  NewsDataUsageRecord,
-  FetchMetricsRecord,
-  KeywordEntry,
-  ClassificationResult,
-  ClassificationContext,
-};

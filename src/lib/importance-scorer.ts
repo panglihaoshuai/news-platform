@@ -146,7 +146,7 @@ export function calculateContentBonus(
   let bonus = 0;
   
   // Has enclosure (image/video) - evidence of significant event
-  if (item.enclosure || item.image_url) {
+  if (item.enclosure) {
     bonus += 5;
   }
   
