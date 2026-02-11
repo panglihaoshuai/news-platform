@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { NewsItem, Theme } from '@/types/news';
 import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { getThemeTokens, getPriorityColor } from '@/styles/designTokens';
+import { PaywallPromptModal } from '@/components/PaywallPromptModal';
+import { usePaywallLinkInterceptor } from '@/hooks/usePaywallPrompt';
 
 interface NewsFeedProps {
     news: NewsItem[];
@@ -18,6 +20,13 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
     const t = useTranslations('NewsFeed');
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const tokens = getThemeTokens(theme);
+    const {
+        showModal,
+        pendingUrl,
+        interceptLinkClick,
+        handleContinue,
+        handleClose,
+    } = usePaywallLinkInterceptor();
 
     const getPriorityLabel = (score?: number) => {
         if (!score) return 'P3';
@@ -70,6 +79,15 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
                                     href={item.original_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+
+                                        const intercepted = interceptLinkClick(item.original_url);
+                                        if (!intercepted) {
+                                            window.open(item.original_url, '_blank', 'noopener,noreferrer');
+                                        }
+                                    }}
                                     className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent)]  uppercase"
                                 >
                                     <ExternalLink size={12} />
@@ -102,6 +120,14 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
                     {hasLoaded ? 'No news available' : t('loading')}
                 </div>
             )}
+
+            <PaywallPromptModal
+                isOpen={showModal}
+                onClose={handleClose}
+                onContinue={handleContinue}
+                targetUrl={pendingUrl || ''}
+                theme={theme}
+            />
         </div>
     );
 };
