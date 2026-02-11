@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { NewsItem, Theme } from '@/types/news';
-import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
-import { getThemeTokens, getPriorityColor } from '@/styles/designTokens';
+import { ExternalLink, ChevronDown } from 'lucide-react';
+import { getThemeTokens } from '@/styles/designTokens';
 import { PaywallPromptModal } from '@/components/PaywallPromptModal';
 import { usePaywallLinkInterceptor } from '@/hooks/usePaywallPrompt';
 
@@ -27,14 +27,6 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
         handleContinue,
         handleClose,
     } = usePaywallLinkInterceptor();
-
-    const getPriorityLabel = (score?: number) => {
-        if (!score) return 'P3';
-        if (score >= 80) return 'P0';
-        if (score >= 60) return 'P1';
-        if (score >= 40) return 'P2';
-        return 'P3';
-    };
 
     return (
         <div 
