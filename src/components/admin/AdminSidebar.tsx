@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Tag, TestTube, Settings, LogOut } from 'lucide-react';
+import { buildLocalizedAdminPath, extractLocaleFromPathname } from '@/lib/admin-core';
 
 const menuItems = [
-  { href: '/admin', label: '分类工作台', icon: LayoutDashboard },
-  { href: '/admin/keywords', label: '关键词库', icon: Tag },
-  { href: '/admin/test', label: '实时测试', icon: TestTube },
-  { href: '/admin/settings', label: '系统设置', icon: Settings },
+  { subPath: '', label: '分类工作台', icon: LayoutDashboard },
+  { subPath: '/keywords', label: '关键词库', icon: Tag },
+  { subPath: '/test', label: '实时测试', icon: TestTube },
+  { subPath: '/settings', label: '系统设置', icon: Settings },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const locale = extractLocaleFromPathname(pathname || '/en/admin');
 
   return (
     <aside className="w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col">
@@ -25,12 +27,13 @@ export function AdminSidebar() {
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+            const href = buildLocalizedAdminPath(locale, item.subPath);
+            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
             
             return (
-              <li key={item.href}>
+              <li key={item.subPath || 'root'}>
                 <Link
-                  href={item.href}
+                  href={href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-red-600 text-white'
@@ -50,7 +53,7 @@ export function AdminSidebar() {
         <button
           type="button"
           onClick={() => {
-            fetch('/api/admin/logout', { method: 'POST' })
+            fetch('/api/admin/auth', { method: 'DELETE' })
               .then(() => { window.location.href = '/admin-login'; });
           }}
           className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"

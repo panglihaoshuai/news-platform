@@ -94,9 +94,7 @@ export function MainContent({
   return (
     <div 
       className={`flex-1 flex overflow-hidden ${className}`}
-      style={{ 
-        height: `calc(100vh - ${spacing.layout.tickerHeight}px - ${spacing.layout.statusHeight}px)`,
-      }}
+      style={{ minHeight: 0 }}
     >
       {children}
     </div>
@@ -120,7 +118,8 @@ export function MapSection({
   return (
     <div
       style={{
-        flex: `0 0 ${Math.max(10, Math.min(85, width * 100))}%`,
+        flex: `${Math.max(0.2, Math.min(0.8, width))} 1 0%`,
+        minWidth: 320,
         borderRight: `1px solid ${tokens.border.default}`,
         overflow: 'hidden',
         position: 'relative',
@@ -148,7 +147,8 @@ export function NewsSection({
   return (
     <div
       style={{
-        flex: `0 0 ${Math.max(10, Math.min(85, width * 100))}%`,
+        flex: `${Math.max(0.15, Math.min(0.7, width))} 1 0%`,
+        minWidth: 300,
         borderRight: `1px solid ${tokens.border.default}`,
         overflow: 'hidden',
         display: 'flex',
@@ -166,12 +166,10 @@ export function NewsSection({
  */
 export function MarketSection({ 
   children, 
-  collapsed = false,
   width = spacing.layout.panelWidth,
   theme = 'dark',
 }: { 
   children: React.ReactNode;
-  collapsed?: boolean;
   width?: number;
   theme?: Theme;
 }) {
@@ -180,15 +178,17 @@ export function MarketSection({
   return (
     <div
       style={{
-        width: collapsed ? 0 : width,
+        width,
+        minWidth: 220,
+        maxWidth: 460,
         borderLeft: `1px solid ${tokens.border.default}`,
-        overflow: collapsed ? 'hidden' : 'auto',
+        overflow: 'auto',
         transition: 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         backgroundColor: tokens.bg.tertiary,
         flexShrink: 0,
       }}
     >
-      {collapsed ? null : children}
+      {children}
     </div>
   );
 }
@@ -235,8 +235,7 @@ export function TerminalLayout({
   showStatus = true,
   showMarket = true,
 }: TerminalLayoutProps) {
-  const { displayMode, config } = useDisplayMode();
-  const [marketCollapsed, setMarketCollapsed] = useState(false);
+  const { displayMode } = useDisplayMode();
   const [mapWidth, setMapWidth] = useState<number>(0.6);
   const [newsWidth, setNewsWidth] = useState<number>(0.3);
   const [marketWidth, setMarketWidth] = useState<number>(spacing.layout.panelWidth);
@@ -274,23 +273,25 @@ export function TerminalLayout({
 
       const rect = container.getBoundingClientRect();
       const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+      const hasMarket = showMarket && widths.market > 0;
+      const splitterPixels = hasMarket ? 12 : 6;
+      const minMapPx = 320;
+      const minNewsPx = 300;
 
       if (dragging === 'map-news') {
-        const available = Math.max(1, rect.width - (showMarket ? marketWidth : 0));
-        const nextMap = Math.max(0.35, Math.min(0.8, x / available));
-        const nextNews = Math.max(0.15, 1 - nextMap);
-        setMapWidth(nextMap);
-        setNewsWidth(nextNews);
+        const marketPixels = hasMarket ? marketWidth : 0;
+        const available = Math.max(1, rect.width - marketPixels - splitterPixels);
+        const maxMapPx = Math.max(minMapPx, available - minNewsPx);
+        const nextMapPx = Math.max(minMapPx, Math.min(maxMapPx, x));
+        const nextMap = nextMapPx / available;
+        setMapWidth(Math.max(0.2, Math.min(0.8, nextMap)));
+        setNewsWidth(Math.max(0.15, Math.min(0.7, 1 - nextMap)));
       }
 
-      if (dragging === 'news-market' && showMarket) {
-        const nextMarket = Math.max(220, Math.min(460, rect.width - x));
-        const available = Math.max(1, rect.width - nextMarket);
-        const total = mapWidth + newsWidth;
-        const ratio = total > 0 ? mapWidth / total : 0.6;
+      if (dragging === 'news-market' && hasMarket) {
+        const maxMarket = Math.max(220, rect.width - minMapPx - minNewsPx - splitterPixels);
+        const nextMarket = Math.max(220, Math.min(Math.min(460, maxMarket), rect.width - x));
         setMarketWidth(nextMarket);
-        setMapWidth(Math.max(0.3, Math.min(0.8, ratio)));
-        setNewsWidth(Math.max(0.15, Math.min(0.7, 1 - ratio)));
       }
     };
 
@@ -302,13 +303,14 @@ export function TerminalLayout({
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [dragging, mapWidth, newsWidth, marketWidth, showMarket]);
+  }, [dragging, marketWidth, showMarket, widths.market]);
 
   return (
     <div
       style={{
-        width: '100vw',
-        height: '100vh',
+        width: '100%',
+        height: '100dvh',
+        minHeight: '100dvh',
         backgroundColor: tokens.bg.primary,
         color: tokens.text.primary,
         display: 'flex',
@@ -370,7 +372,6 @@ export function TerminalLayout({
             aria-label="Resize news and market panels"
           />
           <MarketSection 
-            collapsed={marketCollapsed}
             width={marketWidth}
             theme={theme}
           >

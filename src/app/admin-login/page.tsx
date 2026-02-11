@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, type FormEvent } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { buildLocalizedAdminPath, extractLocaleFromPathname } from '@/lib/admin-core';
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -22,12 +24,13 @@ export default function AdminLoginPage() {
       });
 
       if (response.ok) {
-        router.push('/admin');
+        const locale = extractLocaleFromPathname(pathname || '/admin-login');
+        router.push(buildLocalizedAdminPath(locale));
         router.refresh();
       } else {
         setError('密码错误');
       }
-    } catch (err) {
+    } catch {
       setError('登录失败，请重试');
     } finally {
       setIsLoading(false);
