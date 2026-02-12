@@ -40,6 +40,7 @@ interface MarketDataPanelProps {
   onToggleExpand?: () => void;
   autoRefresh?: boolean;
   refreshInterval?: number;
+  embedded?: boolean;
 }
 
 // ============================================================================
@@ -227,6 +228,7 @@ export function MarketDataPanel({
   onToggleExpand,
   autoRefresh = true,
   refreshInterval = 60000,
+  embedded = false,
 }: MarketDataPanelProps) {
   const tokens = getThemeTokens(theme);
   const [marketData, setMarketData] = useState<MarketData[]>([]);
@@ -274,7 +276,7 @@ export function MarketDataPanel({
           width: 40,
           height: '100%',
           backgroundColor: tokens.bg.tertiary,
-          borderLeft: `1px solid ${tokens.border.default}`,
+          borderLeft: embedded ? 'none' : `1px solid ${tokens.border.default}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -291,10 +293,10 @@ export function MarketDataPanel({
   return (
     <div
       style={{
-        width: spacing.layout.panelWidth,
+        width: embedded ? '100%' : spacing.layout.panelWidth,
         height: '100%',
         backgroundColor: tokens.bg.tertiary,
-        borderLeft: `1px solid ${tokens.border.default}`,
+        borderLeft: embedded ? 'none' : `1px solid ${tokens.border.default}`,
         display: 'flex',
         flexDirection: 'column' as const,
         overflow: 'hidden',
@@ -357,26 +359,28 @@ export function MarketDataPanel({
           >
             <RefreshCw size={10} />
           </button>
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 20,
-              height: 20,
-              backgroundColor: 'transparent',
-              border: `1px solid ${tokens.border.default}`,
-              borderRadius: 4,
-              cursor: 'pointer',
-              color: tokens.text.muted,
-              transition: 'all 150ms ease',
-            }}
-            title="Collapse"
-          >
-            <ChevronLeft size={12} />
-          </button>
+          {!embedded && (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 20,
+                height: 20,
+                backgroundColor: 'transparent',
+                border: `1px solid ${tokens.border.default}`,
+                borderRadius: 4,
+                cursor: 'pointer',
+                color: tokens.text.muted,
+                transition: 'all 150ms ease',
+              }}
+              title="Collapse"
+            >
+              <ChevronLeft size={12} />
+            </button>
+          )}
         </div>
       </div>
 

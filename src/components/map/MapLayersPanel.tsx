@@ -18,18 +18,18 @@ export function MapLayersPanel({ mapDisplayMode, onMapModeChange, theme = 'dark'
       style={{
         backgroundColor: tokens.bg.secondary,
         border: `1px solid ${tokens.border.default}`,
-        borderRadius: 8,
-        padding: 12,
+        borderRadius: 10,
+        padding: 14,
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
+        gap: 14,
         minHeight: 0,
         overflow: 'auto',
       }}
     >
       <div>
-        <h3 style={{ margin: 0, fontSize: 12, fontWeight: 700, color: tokens.text.primary, letterSpacing: 0.4 }}>LAYERS</h3>
-        <p style={{ margin: '4px 0 0 0', fontSize: 11, color: tokens.text.muted }}>Map visualization modes</p>
+        <h3 style={{ margin: 0, fontSize: 12, fontWeight: 700, color: tokens.text.primary, letterSpacing: 0.75 }}>LAYERS</h3>
+        <p style={{ margin: '5px 0 0 0', fontSize: 11, color: tokens.text.muted, lineHeight: 1.45 }}>Map visualization controls and legend.</p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -48,11 +48,13 @@ export function MapLayersPanel({ mapDisplayMode, onMapModeChange, theme = 'dark'
                 backgroundColor: active ? tokens.bg.hover : tokens.bg.tertiary,
                 color: active ? tokens.text.primary : tokens.text.secondary,
                 textAlign: 'left',
+                minHeight: 44,
                 padding: '8px 10px',
                 cursor: 'pointer',
+                transition: 'all 180ms ease',
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700 }}>{config.name}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.2 }}>{config.name}</div>
               <div style={{ fontSize: 10, color: tokens.text.muted }}>{config.description}</div>
             </button>
           );
@@ -60,7 +62,7 @@ export function MapLayersPanel({ mapDisplayMode, onMapModeChange, theme = 'dark'
       </div>
 
       <div style={{ borderTop: `1px solid ${tokens.border.default}`, paddingTop: 10 }}>
-        <h4 style={{ margin: 0, fontSize: 11, fontWeight: 700, color: tokens.text.primary, letterSpacing: 0.4 }}>LEGEND</h4>
+        <h4 style={{ margin: 0, fontSize: 11, fontWeight: 700, color: tokens.text.primary, letterSpacing: 0.7 }}>LEGEND</h4>
         <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
           {[
             { label: 'P0 Critical', color: tokens.priority.p0 },

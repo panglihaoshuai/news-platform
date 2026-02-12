@@ -341,10 +341,11 @@ export function LiveStreamsPanel({ theme = 'dark', pollIntervalMs = 45_000 }: Li
       style={{
         backgroundColor: tokens.bg.secondary,
         border: `1px solid ${tokens.border.default}`,
-        borderRadius: 8,
+        borderRadius: 10,
         display: 'flex',
         flexDirection: 'column',
-        minHeight: 240,
+        height: '100%',
+        minHeight: 0,
         overflow: 'hidden',
       }}
     >
@@ -354,18 +355,18 @@ export function LiveStreamsPanel({ theme = 'dark', pollIntervalMs = 45_000 }: Li
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '10px 12px',
+          padding: '8px 10px',
           gap: 12,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: tokens.text.primary, fontWeight: 700, fontSize: 12, letterSpacing: 0.4 }}>LIVE MONITOR</span>
+          <span style={{ color: tokens.text.primary, fontWeight: 700, fontSize: 11, letterSpacing: 0.7 }}>LIVE MONITOR</span>
           {isFedPriority && (
             <span
               style={{
                 color: '#fff',
                 backgroundColor: tokens.priority.p0,
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: 700,
                 borderRadius: 4,
                 padding: '2px 6px',
@@ -385,8 +386,9 @@ export function LiveStreamsPanel({ theme = 'dark', pollIntervalMs = 45_000 }: Li
               borderRadius: 4,
               backgroundColor: tokens.bg.tertiary,
               color: tokens.text.primary,
-              fontSize: 11,
-              padding: '4px 8px',
+              fontSize: 10,
+              minHeight: 32,
+              padding: '0 10px',
               cursor: 'pointer',
             }}
           >
@@ -402,9 +404,12 @@ export function LiveStreamsPanel({ theme = 'dark', pollIntervalMs = 45_000 }: Li
               borderRadius: 4,
               backgroundColor: tokens.bg.tertiary,
               color: tokens.text.secondary,
-              fontSize: 11,
-              padding: '4px 8px',
+              fontSize: 10,
+              minHeight: 32,
+              padding: '0 10px',
               textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
             }}
           >
             Open YouTube
@@ -416,10 +421,11 @@ export function LiveStreamsPanel({ theme = 'dark', pollIntervalMs = 45_000 }: Li
         style={{
           display: 'flex',
           gap: 6,
-          padding: '8px 10px',
+          padding: '6px 8px',
           borderBottom: `1px solid ${tokens.border.default}`,
           backgroundColor: tokens.bg.primary,
-          flexWrap: 'wrap',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
         }}
       >
         {LIVE_CHANNELS.map((channel) => {
@@ -435,14 +441,16 @@ export function LiveStreamsPanel({ theme = 'dark', pollIntervalMs = 45_000 }: Li
                 borderRadius: 4,
                 backgroundColor: isActive ? tokens.bg.hover : tokens.bg.secondary,
                 color: isActive ? tokens.text.primary : tokens.text.secondary,
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: 0.2,
-                padding: '5px 8px',
+                minHeight: 32,
+                padding: '0 9px',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                flexShrink: 0,
               }}
             >
               <span>{channel.label}</span>
@@ -462,17 +470,41 @@ export function LiveStreamsPanel({ theme = 'dark', pollIntervalMs = 45_000 }: Li
         })}
       </div>
 
-      <div style={{ flex: 1, minHeight: 180, backgroundColor: '#000' }}>
-        <div ref={playerContainerRef} style={{ width: '100%', height: '100%', minHeight: 180 }} />
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#050505',
+          padding: 8,
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            minHeight: 140,
+            aspectRatio: '16 / 9',
+            maxHeight: '100%',
+            borderRadius: 8,
+            overflow: 'hidden',
+            backgroundColor: '#000',
+          }}
+        >
+          <div ref={playerContainerRef} style={{ width: '100%', height: '100%' }} />
+        </div>
       </div>
 
       <footer
         style={{
           borderTop: `1px solid ${tokens.border.default}`,
-          padding: '8px 10px',
-          fontSize: 11,
+          padding: '6px 10px',
+          fontSize: 10,
           color: tokens.text.muted,
           backgroundColor: tokens.bg.primary,
+          lineHeight: 1.4,
         }}
       >
         {statusMessage} {isVideoPlaying ? ' (PLAYING)' : ' (IDLE)'}

@@ -3,20 +3,20 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { InteractiveMap } from '@/components/InteractiveMap';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Filters } from '@/components/Filters';
 import { TerminalLayout } from '@/components/layout/TerminalLayout';
 import { TickerBar } from '@/components/layout/TickerBar';
 import { StatusBar } from '@/components/layout/StatusBar';
 import { MarketDataPanel } from '@/components/layout/MarketDataPanel';
 import { LiveStreamsPanel } from '@/components/live/LiveStreamsPanel';
 import { MapLayersPanel } from '@/components/map/MapLayersPanel';
+import { MarketFilterPanel } from '@/components/sidebar/MarketFilterPanel';
 import { NewsItem, NewsFilters, RSSSource, Theme } from '@/types/news';
 import { useTheme, ThemeProvider } from '@/hooks/useTheme';
-import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { useMapDisplayMode } from '@/hooks/useMapDisplayMode';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { createClient } from '@supabase/supabase-js';
 import { getCountriesByRegion, getCountryByCode, COUNTRIES } from '@/config/region-mapping';
+import { Filter, PanelRightOpen, PanelRightClose } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,7 +37,6 @@ function normalizeLanguage(value?: string | null, title?: string): 'en' | 'zh' {
 
 function PageContent({ locale }: { locale: string }) {
   const { theme } = useTheme();
-  const { displayMode, cycleDisplayMode } = useDisplayMode();
   const { mapDisplayMode, setMapDisplayMode } = useMapDisplayMode();
   
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -57,7 +56,9 @@ function PageContent({ locale }: { locale: string }) {
   const [latency, setLatency] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
   const [marketExpanded, setMarketExpanded] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const latestTopNewsIdRef = useRef<string | null>(null);
+  const filterCount = filters.categories.length + (filters.region !== 'global' ? 1 : 0) + (filters.country !== 'all' ? 1 : 0);
 
   const countryOptions = filters.region === 'global'
     ? availableCountries
@@ -261,23 +262,70 @@ function PageContent({ locale }: { locale: string }) {
           />
         ),
         news: (
-          <>
-            <Filters
-              filters={filters}
-              onChange={setFilters}
-              theme={theme}
-              mapDisplayMode={mapDisplayMode}
-              onMapModeChange={setMapDisplayMode}
-              countries={countryOptions}
-            />
-            <NewsFeed
-              news={news}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              theme={theme}
-              hasLoaded={hasLoadedNews}
-            />
-          </>
+          <div style={{ height: '100%', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
+            <div
+              style={{
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                padding: '10px 12px',
+                display: 'grid',
+                gap: 8,
+                background: 'rgba(8, 10, 14, 0.92)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>Market Filters</div>
+                  <div style={{ fontSize: 11, opacity: 0.7 }}>Click to refine focus, then monitor market + map.</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((prev) => !prev)}
+                  style={{
+                    minHeight: 36,
+                    borderRadius: 8,
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    background: 'rgba(28,32,42,0.8)',
+                    color: '#f2f4f7',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: 0.4,
+                    padding: '0 10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {filtersOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+                  <Filter size={13} />
+                  {filtersOpen ? 'Hide' : 'Open'}
+                </button>
+              </div>
+
+              <div style={{ fontSize: 11, opacity: 0.78 }}>
+                Active: {filterCount > 0 ? `${filterCount} applied` : 'no manual filters'} | Region {filters.region.toUpperCase()} | Language {filters.contentLanguage.toUpperCase()}
+              </div>
+
+              {filtersOpen && (
+                <MarketFilterPanel
+                  filters={filters}
+                  onChange={setFilters}
+                  countries={countryOptions}
+                  theme={theme}
+                />
+              )}
+            </div>
+
+            <div style={{ minHeight: 0, overflow: 'hidden' }}>
+              <NewsFeed
+                news={news.slice(0, 24)}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                theme={theme}
+                hasLoaded={hasLoadedNews}
+              />
+            </div>
+          </div>
         ),
         market: (
           <MarketDataPanel
@@ -285,6 +333,7 @@ function PageContent({ locale }: { locale: string }) {
             expanded={marketExpanded}
             onToggleExpand={() => setMarketExpanded(!marketExpanded)}
             autoRefresh={true}
+            embedded={true}
           />
         ),
         bottom: (

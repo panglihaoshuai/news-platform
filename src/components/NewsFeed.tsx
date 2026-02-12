@@ -37,12 +37,10 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
             }}
         >
             {news.map((item) => (
-                <button
-                    type="button"
+                <article
                     key={item.id}
-                    className={`p-4 border-b w-full text-left transition-colors cursor-pointer ${selectedId === item.id ? ' border-l-2 ' : ''
+                    className={`p-4 border-b w-full text-left transition-colors ${selectedId === item.id ? ' border-l-2 ' : ''
                         }`}
-                    onClick={() => onSelect(item.id)}
                 >
                     <div className="flex justify-between items-center text-[10px]  uppercase tracking-widest mb-2 font-mono">
                         <div className="flex gap-2">
@@ -57,9 +55,13 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
                         </span>
                     </div>
 
-                    <h3 className="text-sm font-semibold  leading-snug mb-2">
+                    <button
+                        type="button"
+                        onClick={() => onSelect(item.id)}
+                        className="w-full text-left text-sm font-semibold leading-snug mb-2 hover:underline underline-offset-4"
+                    >
                         {item.title}
-                    </h3>
+                    </button>
 
                     {expandedId === item.id ? (
                         <div className="animate-in fade-in slide-in-from-top-1 duration-200">
@@ -104,7 +106,7 @@ export const NewsFeed: React.FC<NewsFeedProps> = ({ news, selectedId, onSelect, 
                             {t('expand')}
                         </button>
                     )}
-                </button>
+                </article>
             ))}
 
             {news.length === 0 && (

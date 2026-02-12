@@ -242,14 +242,15 @@ export function TerminalLayout({
 
   const modeLayout =
     displayMode === 'immersive'
-      ? { leftWidth: 240, rightWidth: 400, bottomHeight: 280 }
+      ? { leftWidth: 300, rightWidth: 380, liveHeight: 250 }
       : displayMode === 'compact'
-        ? { leftWidth: 220, rightWidth: 360, bottomHeight: 240 }
-        : { leftWidth: 248, rightWidth: 390, bottomHeight: 280 };
+        ? { leftWidth: 260, rightWidth: 350, liveHeight: 220 }
+        : { leftWidth: 280, rightWidth: 370, liveHeight: 240 };
 
-  const hasBottomDeck = Boolean(children.bottom);
-  const hasLeftPanel = Boolean(children.left);
+  const hasLeftTop = Boolean(children.left);
+  const hasLeftBottom = Boolean(children.bottom);
   const hasRightMarket = showMarket && Boolean(children.market);
+  const hasLeftColumn = hasLeftTop || hasLeftBottom;
 
   return (
     <div
@@ -280,83 +281,77 @@ export function TerminalLayout({
             width: '100%',
             height: '100%',
             minHeight: 0,
-            gridTemplateRows: hasBottomDeck
-              ? `minmax(0, 1fr) minmax(220px, ${modeLayout.bottomHeight}px)`
-              : 'minmax(0, 1fr)',
             gap: 8,
             padding: 8,
             boxSizing: 'border-box',
+            gridTemplateColumns: hasLeftColumn
+              ? `${modeLayout.leftWidth}px minmax(0, 1fr) minmax(320px, ${modeLayout.rightWidth}px)`
+              : `minmax(0, 1fr) minmax(320px, ${modeLayout.rightWidth}px)`,
           }}
         >
-          <div
-            style={{
-              minHeight: 0,
-              display: 'grid',
-              gap: 8,
-              gridTemplateColumns: hasLeftPanel
-                ? `${modeLayout.leftWidth}px minmax(0, 1fr) minmax(320px, ${modeLayout.rightWidth}px)`
-                : `minmax(0, 1fr) minmax(320px, ${modeLayout.rightWidth}px)`,
-            }}
-          >
-            {hasLeftPanel && (
-              <div style={{ minHeight: 0, overflow: 'auto' }}>
-                {children.left}
-              </div>
-            )}
-
-            <div
-              style={{
-                minHeight: 0,
-                border: `1px solid ${tokens.border.default}`,
-                borderRadius: 8,
-                overflow: 'hidden',
-                backgroundColor: tokens.bg.map,
-              }}
-            >
-              {children.map}
-            </div>
-
+          {hasLeftColumn && (
             <div
               style={{
                 minHeight: 0,
                 display: 'grid',
                 gap: 8,
-                gridTemplateRows: hasRightMarket ? 'minmax(0, 1fr) minmax(180px, 38%)' : 'minmax(0, 1fr)',
+                gridTemplateRows:
+                  hasLeftTop && hasLeftBottom
+                    ? `minmax(220px, 1fr) minmax(200px, ${modeLayout.liveHeight}px)`
+                    : 'minmax(0, 1fr)',
               }}
             >
+              {hasLeftTop && <div style={{ minHeight: 0 }}>{children.left}</div>}
+              {hasLeftBottom && <div style={{ minHeight: 0 }}>{children.bottom}</div>}
+            </div>
+          )}
+
+          <div
+            style={{
+              minHeight: 0,
+              border: `1px solid ${tokens.border.default}`,
+              borderRadius: 10,
+              overflow: 'hidden',
+              backgroundColor: tokens.bg.map,
+            }}
+          >
+            {children.map}
+          </div>
+
+          <div
+            style={{
+              minHeight: 0,
+              display: 'grid',
+              gap: 8,
+              gridTemplateRows: hasRightMarket ? 'minmax(0, 1fr) minmax(220px, 42%)' : 'minmax(0, 1fr)',
+            }}
+          >
+            <div
+              style={{
+                minHeight: 0,
+                border: `1px solid ${tokens.border.default}`,
+                borderRadius: 10,
+                overflow: 'hidden',
+                backgroundColor: tokens.bg.secondary,
+              }}
+            >
+              {children.news}
+            </div>
+
+            {hasRightMarket && (
               <div
                 style={{
                   minHeight: 0,
                   border: `1px solid ${tokens.border.default}`,
-                  borderRadius: 8,
+                  borderRadius: 10,
                   overflow: 'hidden',
-                  backgroundColor: tokens.bg.secondary,
+                  backgroundColor: tokens.bg.tertiary,
                 }}
               >
-                {children.news}
+                {children.market}
               </div>
-
-              {hasRightMarket && (
-                <div
-                  style={{
-                    minHeight: 0,
-                    border: `1px solid ${tokens.border.default}`,
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    backgroundColor: tokens.bg.tertiary,
-                  }}
-                >
-                  {children.market}
-                </div>
-              )}
-            </div>
+            )}
           </div>
-
-          {hasBottomDeck && (
-            <div style={{ minHeight: 0, overflow: 'hidden' }}>
-              {children.bottom}
-            </div>
-          )}
         </div>
       </MainContent>
 
