@@ -25,7 +25,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { spacing } from '@/styles/spacing';
 import { getThemeTokens, Theme } from '@/styles/designTokens';
 import { DisplayMode } from '@/types/news';
@@ -38,9 +38,11 @@ import { useDisplayMode } from '@/hooks/useDisplayMode';
 interface TerminalLayoutProps {
   children: {
     ticker?: React.ReactNode;
+    left?: React.ReactNode;
     map?: React.ReactNode;
     news?: React.ReactNode;
     market?: React.ReactNode;
+    bottom?: React.ReactNode;
     status?: React.ReactNode;
   };
   theme?: Theme;
@@ -236,74 +238,18 @@ export function TerminalLayout({
   showMarket = true,
 }: TerminalLayoutProps) {
   const { displayMode } = useDisplayMode();
-  const [mapWidth, setMapWidth] = useState<number>(0.6);
-  const [newsWidth, setNewsWidth] = useState<number>(0.3);
-  const [marketWidth, setMarketWidth] = useState<number>(spacing.layout.panelWidth);
-  const [dragging, setDragging] = useState<'map-news' | 'news-market' | null>(null);
-  const mainRef = useRef<HTMLDivElement | null>(null);
   const tokens = getThemeTokens(theme);
 
-  // Calculate section widths based on display mode
-  const getWidths = (): { map: number; news: number; market: number } => {
-    switch (displayMode) {
-      case 'immersive':
-        return { map: 0.85, news: 0.15, market: 0 };
-      case 'compact':
-        return { map: 0.7, news: 0.25, market: 0.05 };
-      case 'standard':
-      default:
-        return { map: 0.6, news: 0.3, market: 0.1 };
-    }
-  };
+  const modeLayout =
+    displayMode === 'immersive'
+      ? { leftWidth: 240, rightWidth: 400, bottomHeight: 280 }
+      : displayMode === 'compact'
+        ? { leftWidth: 220, rightWidth: 360, bottomHeight: 240 }
+        : { leftWidth: 248, rightWidth: 390, bottomHeight: 280 };
 
-  const widths = getWidths();
-
-  useEffect(() => {
-    setMapWidth(widths.map);
-    setNewsWidth(widths.news);
-    setMarketWidth(spacing.layout.panelWidth);
-  }, [widths.map, widths.news]);
-
-  useEffect(() => {
-    if (!dragging) return;
-
-    const onMouseMove = (event: MouseEvent) => {
-      const container = mainRef.current;
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-      const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
-      const hasMarket = showMarket && widths.market > 0;
-      const splitterPixels = hasMarket ? 12 : 6;
-      const minMapPx = 320;
-      const minNewsPx = 300;
-
-      if (dragging === 'map-news') {
-        const marketPixels = hasMarket ? marketWidth : 0;
-        const available = Math.max(1, rect.width - marketPixels - splitterPixels);
-        const maxMapPx = Math.max(minMapPx, available - minNewsPx);
-        const nextMapPx = Math.max(minMapPx, Math.min(maxMapPx, x));
-        const nextMap = nextMapPx / available;
-        setMapWidth(Math.max(0.2, Math.min(0.8, nextMap)));
-        setNewsWidth(Math.max(0.15, Math.min(0.7, 1 - nextMap)));
-      }
-
-      if (dragging === 'news-market' && hasMarket) {
-        const maxMarket = Math.max(220, rect.width - minMapPx - minNewsPx - splitterPixels);
-        const nextMarket = Math.max(220, Math.min(Math.min(460, maxMarket), rect.width - x));
-        setMarketWidth(nextMarket);
-      }
-    };
-
-    const onMouseUp = () => setDragging(null);
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-  }, [dragging, marketWidth, showMarket, widths.market]);
+  const hasBottomDeck = Boolean(children.bottom);
+  const hasLeftPanel = Boolean(children.left);
+  const hasRightMarket = showMarket && Boolean(children.market);
 
   return (
     <div
@@ -328,57 +274,89 @@ export function TerminalLayout({
 
       {/* Main Content */}
       <MainContent>
-        <div ref={mainRef} style={{ display: 'flex', width: '100%', height: '100%' }}>
-        {/* Map Area */}
-        <MapSection width={mapWidth} theme={theme}>
-          {children.map}
-        </MapSection>
-
-        <button
-          type="button"
-          onMouseDown={() => setDragging('map-news')}
+        <div
           style={{
-            width: 6,
-            cursor: 'col-resize',
-            backgroundColor: dragging === 'map-news' ? tokens.accent.info : tokens.border.default,
-            opacity: 0.8,
-            flexShrink: 0,
-            border: 'none',
-            padding: 0,
+            display: 'grid',
+            width: '100%',
+            height: '100%',
+            minHeight: 0,
+            gridTemplateRows: hasBottomDeck
+              ? `minmax(0, 1fr) minmax(220px, ${modeLayout.bottomHeight}px)`
+              : 'minmax(0, 1fr)',
+            gap: 8,
+            padding: 8,
+            boxSizing: 'border-box',
           }}
-          aria-label="Resize map and news panels"
-        />
-
-        {/* News Area */}
-        <NewsSection width={newsWidth} theme={theme}>
-          {children.news}
-        </NewsSection>
-
-        {/* Market Panel */}
-        {showMarket && widths.market > 0 && (
-          <>
-          <button
-            type="button"
-            onMouseDown={() => setDragging('news-market')}
+        >
+          <div
             style={{
-              width: 6,
-              cursor: 'col-resize',
-              backgroundColor: dragging === 'news-market' ? tokens.accent.info : tokens.border.default,
-              opacity: 0.8,
-              flexShrink: 0,
-              border: 'none',
-              padding: 0,
+              minHeight: 0,
+              display: 'grid',
+              gap: 8,
+              gridTemplateColumns: hasLeftPanel
+                ? `${modeLayout.leftWidth}px minmax(0, 1fr) minmax(320px, ${modeLayout.rightWidth}px)`
+                : `minmax(0, 1fr) minmax(320px, ${modeLayout.rightWidth}px)`,
             }}
-            aria-label="Resize news and market panels"
-          />
-          <MarketSection 
-            width={marketWidth}
-            theme={theme}
           >
-            {children.market}
-          </MarketSection>
-          </>
-        )}
+            {hasLeftPanel && (
+              <div style={{ minHeight: 0, overflow: 'auto' }}>
+                {children.left}
+              </div>
+            )}
+
+            <div
+              style={{
+                minHeight: 0,
+                border: `1px solid ${tokens.border.default}`,
+                borderRadius: 8,
+                overflow: 'hidden',
+                backgroundColor: tokens.bg.map,
+              }}
+            >
+              {children.map}
+            </div>
+
+            <div
+              style={{
+                minHeight: 0,
+                display: 'grid',
+                gap: 8,
+                gridTemplateRows: hasRightMarket ? 'minmax(0, 1fr) minmax(180px, 38%)' : 'minmax(0, 1fr)',
+              }}
+            >
+              <div
+                style={{
+                  minHeight: 0,
+                  border: `1px solid ${tokens.border.default}`,
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  backgroundColor: tokens.bg.secondary,
+                }}
+              >
+                {children.news}
+              </div>
+
+              {hasRightMarket && (
+                <div
+                  style={{
+                    minHeight: 0,
+                    border: `1px solid ${tokens.border.default}`,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    backgroundColor: tokens.bg.tertiary,
+                  }}
+                >
+                  {children.market}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {hasBottomDeck && (
+            <div style={{ minHeight: 0, overflow: 'hidden' }}>
+              {children.bottom}
+            </div>
+          )}
         </div>
       </MainContent>
 

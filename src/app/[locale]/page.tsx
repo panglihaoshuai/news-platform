@@ -8,6 +8,8 @@ import { TerminalLayout } from '@/components/layout/TerminalLayout';
 import { TickerBar } from '@/components/layout/TickerBar';
 import { StatusBar } from '@/components/layout/StatusBar';
 import { MarketDataPanel } from '@/components/layout/MarketDataPanel';
+import { LiveStreamsPanel } from '@/components/live/LiveStreamsPanel';
+import { MapLayersPanel } from '@/components/map/MapLayersPanel';
 import { NewsItem, NewsFilters, RSSSource, Theme } from '@/types/news';
 import { useTheme, ThemeProvider } from '@/hooks/useTheme';
 import { useDisplayMode } from '@/hooks/useDisplayMode';
@@ -251,6 +253,13 @@ function PageContent({ locale }: { locale: string }) {
             focusCountry={filters.country}
           />
         ),
+        left: (
+          <MapLayersPanel
+            mapDisplayMode={mapDisplayMode}
+            onMapModeChange={setMapDisplayMode}
+            theme={theme}
+          />
+        ),
         news: (
           <>
             <Filters
@@ -277,6 +286,9 @@ function PageContent({ locale }: { locale: string }) {
             onToggleExpand={() => setMarketExpanded(!marketExpanded)}
             autoRefresh={true}
           />
+        ),
+        bottom: (
+          <LiveStreamsPanel theme={theme} />
         ),
         status: (
           <StatusBar

@@ -17,6 +17,13 @@ interface InteractiveMapProps {
     focusCountry?: string;
 }
 
+function getPriority(importanceScore: number): 'P0' | 'P1' | 'P2' | 'P3' {
+    if (importanceScore >= 80) return 'P0';
+    if (importanceScore >= 60) return 'P1';
+    if (importanceScore >= 40) return 'P2';
+    return 'P3';
+}
+
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({ 
     news, 
     selectedId, 
@@ -111,14 +118,19 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         if (!isLoaded || !map.current) return;
 
         const sourceId = 'news-source';
+        const isPriorityMode = displayMode === 'priority';
+        const isHeatmapMode = displayMode === 'heatmap';
+
         const features = news
             .filter(n => n.geo_lat && n.geo_lng)
+            .filter((item) => !isPriorityMode || item.importance_score >= 60)
             .map(n => ({
                 type: 'Feature',
                 properties: {
                     id: n.id,
                     title: n.title,
-                    country: n.country_code
+                    country: n.country_code,
+                    priority: getPriority(n.importance_score),
                 },
                 geometry: {
                     type: 'Point',
@@ -148,7 +160,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 source: sourceId,
                 filter: ['has', 'point_count'],
                 paint: {
-                    'circle-color': tokens.heat.high, // Use heat color for clusters
+                    'circle-color': tokens.heat.high,
                     'circle-radius': 20,
                     'circle-stroke-width': 2,
                     'circle-stroke-color': tokens.bg.primary
@@ -199,6 +211,24 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 }
             });
 
+            map.current.addLayer({
+                id: 'breaking-label',
+                type: 'symbol',
+                source: sourceId,
+                filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'priority'], 'P0']],
+                layout: {
+                    'text-field': 'BREAKING',
+                    'text-size': 10,
+                    'text-offset': [0, -1.8],
+                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                },
+                paint: {
+                    'text-color': tokens.priority.p0,
+                    'text-halo-color': tokens.bg.primary,
+                    'text-halo-width': 1,
+                },
+            });
+
             // Click Cluster -> Zoom
             map.current.on('click', 'clusters', async (e) => {
                 const features = map.current?.queryRenderedFeatures(e.point, { layers: ['clusters'] });
@@ -236,7 +266,33 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             map.current.on('mouseenter', 'unclustered-point', setPointer);
             map.current.on('mouseleave', 'unclustered-point', resetPointer);
         }
-    }, [news, isLoaded, onSelect, tokens]);
+
+        if (map.current.getLayer('clusters')) {
+            const clusterColor = isHeatmapMode
+                ? [
+                    'step',
+                    ['get', 'point_count'],
+                    tokens.heat.low,
+                    10,
+                    tokens.heat.medium,
+                    25,
+                    tokens.heat.high,
+                    50,
+                    tokens.heat.critical,
+                ]
+                : tokens.heat.high;
+
+            map.current.setPaintProperty('clusters', 'circle-color', clusterColor);
+        }
+
+        if (map.current.getLayer('unclustered-point')) {
+            map.current.setLayoutProperty('unclustered-point', 'visibility', isHeatmapMode ? 'none' : 'visible');
+        }
+
+        if (map.current.getLayer('breaking-label')) {
+            map.current.setLayoutProperty('breaking-label', 'visibility', isHeatmapMode ? 'none' : 'visible');
+        }
+    }, [news, isLoaded, onSelect, tokens, displayMode]);
 
     // Camera Synchronization (FlyTo) - Independent Effect
     useEffect(() => {
