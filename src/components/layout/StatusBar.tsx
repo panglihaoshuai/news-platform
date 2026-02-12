@@ -1,7 +1,7 @@
 /**
  * StatusBar Component - Bottom Status Bar
  * Bloomberg Terminal War Room Edition
- * 
+ *
  * Features:
  * - Online status indicator
  * - UTC time and local time display
@@ -9,7 +9,7 @@
  * - Network latency
  * - Theme switcher
  * - Auto-pilot status
- * 
+ *
  * @module src/components/layout/StatusBar
  */
 
@@ -20,18 +20,16 @@ import { spacing } from '@/styles/spacing';
 import { typography } from '@/styles/typography';
 import { getThemeTokens, Theme } from '@/styles/designTokens';
 import { useTheme } from '@/hooks/useTheme';
-import { 
-  Wifi, 
-  WifiOff, 
-  Clock, 
-  Globe, 
-  Activity, 
+import {
+  Wifi,
+  WifiOff,
+  Clock,
+  Globe,
+  Activity,
   Zap,
   Sun,
   Moon,
   Eye,
-  ChevronUp,
-  ChevronDown
 } from 'lucide-react';
 
 // ============================================================================
@@ -52,19 +50,19 @@ interface StatusBarProps {
 // Time Display Component
 // ============================================================================
 
-function TimeDisplay({ 
-  utcTime, 
-  localTime, 
+function TimeDisplay({
+  utcTime,
+  localTime,
   timezone,
   theme = 'dark'
-}: { 
+}: {
   utcTime: string;
   localTime: string;
   timezone: string;
   theme?: Theme;
 }) {
   const tokens = getThemeTokens(theme);
-  
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <Clock size={12} style={{ color: tokens.text.muted }} />
@@ -84,17 +82,17 @@ function TimeDisplay({
 // Status Indicator Component
 // ============================================================================
 
-function StatusIndicator({ 
+function StatusIndicator({
   isOnline = true,
   latency,
   theme = 'dark'
-}: { 
+}: {
   isOnline?: boolean;
   latency?: number;
   theme?: Theme;
 }) {
   const tokens = getThemeTokens(theme);
-  
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -103,7 +101,7 @@ function StatusIndicator({
         ) : (
           <WifiOff size={12} style={{ color: tokens.accent.down }} />
         )}
-        <span style={{ 
+        <span style={{
           color: isOnline ? tokens.accent.up : tokens.accent.down,
           fontSize: 10,
           fontWeight: 700,
@@ -113,13 +111,13 @@ function StatusIndicator({
           {isOnline ? 'ONLINE' : 'OFFLINE'}
         </span>
       </div>
-      
+
       {latency !== undefined && (
         <>
           <span style={{ color: tokens.text.disabled, margin: '0 4px' }}>|</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Activity size={12} style={{ color: latency < 100 ? tokens.accent.up : tokens.accent.warning }} />
-            <span style={{ 
+            <span style={{
               color: latency < 100 ? tokens.text.secondary : tokens.accent.warning,
               fontSize: 10,
               fontFamily: '"JetBrains Mono", monospace',
@@ -137,13 +135,13 @@ function StatusIndicator({
 // Theme Switcher Component
 // ============================================================================
 
-function ThemeSwitcher({ 
+function ThemeSwitcher({
   currentTheme,
-  onToggle,
+  onSetTheme,
   theme = 'dark'
-}: { 
+}: {
   currentTheme: 'dark' | 'amber' | 'light';
-  onToggle: () => void;
+  onSetTheme: (theme: 'dark' | 'amber' | 'light') => void;
   theme?: Theme;
 }) {
   const tokens = getThemeTokens(theme);
@@ -152,18 +150,18 @@ function ThemeSwitcher({
     { value: 'amber' as const, icon: Sun, label: 'Amber' },
     { value: 'light' as const, icon: Eye, label: 'Light' },
   ];
-  const currentIndex = themeConfig.findIndex(t => t.value === currentTheme);
-  
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-      {themeConfig.map((t, index) => {
+      {themeConfig.map((t) => {
         const Icon = t.icon;
         const isActive = t.value === currentTheme;
-        
+
         return (
           <button
+            type="button"
             key={t.value}
-            onClick={onToggle}
+            onClick={() => onSetTheme(t.value)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -208,22 +206,22 @@ export function StatusBar({
   useEffect(() => {
     const updateTimes = () => {
       const now = new Date();
-      setLocalTime(now.toLocaleTimeString('en-US', { 
-        hour12: false, 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
+      setLocalTime(now.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
       }));
       setCurrentTime(now.toISOString().slice(11, 19));
     };
-    
+
     updateTimes();
     const interval = setInterval(updateTimes, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const { toggleTheme, theme: currentTheme } = useTheme();
-  const effectiveTheme = theme || currentTheme;
+  const { setTheme, theme: contextTheme } = useTheme();
+  const effectiveTheme = theme || contextTheme;
 
   return (
     <div
@@ -242,8 +240,8 @@ export function StatusBar({
     >
       {/* Left Section: Status & Time */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <StatusIndicator 
-          isOnline={isOnline} 
+        <StatusIndicator
+          isOnline={isOnline}
           latency={latency}
           theme={theme}
         />
@@ -259,7 +257,7 @@ export function StatusBar({
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ color: tokens.text.muted }}>EVENTS:</span>
-          <span style={{ 
+          <span style={{
             color: tokens.text.primary,
             fontWeight: 600,
             minWidth: 40,
@@ -268,11 +266,11 @@ export function StatusBar({
             {newsCount.toString().padStart(3, '0')}
           </span>
         </div>
-        
+
         {autoPilotEnabled && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Zap size={12} style={{ color: tokens.accent.warning }} />
-            <span style={{ 
+            <span style={{
               color: tokens.accent.warning,
               fontSize: 10,
               fontWeight: 600,
@@ -289,12 +287,12 @@ export function StatusBar({
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <ThemeSwitcher
           currentTheme={effectiveTheme}
-          onToggle={onToggleTheme || toggleTheme}
+          onSetTheme={setTheme}
           theme={theme}
         />
-        
+
         {lastUpdated && (
-          <span style={{ 
+          <span style={{
             color: tokens.text.muted,
             fontSize: 10,
           }}>
