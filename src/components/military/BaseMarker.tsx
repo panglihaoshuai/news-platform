@@ -46,7 +46,8 @@ export const BaseMarker: React.FC<BaseMarkerProps> = ({
   const color = getBaseColor(base.type);
   
   return (
-    <div
+    <button
+      type="button"
       className={`
         absolute transform -translate-x-1/2 -translate-y-1/2 
         cursor-pointer transition-all duration-200
@@ -83,7 +84,7 @@ export const BaseMarker: React.FC<BaseMarkerProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </button>
   );
 };
 

@@ -34,6 +34,8 @@ export interface MilitaryAircraft {
   verticalRate?: number;
   /** Position accuracy */
   positionAccuracy?: 'estimated' | 'assumed' | 'known';
+  /** Classified military aircraft type */
+  aircraftType?: 'bomber' | 'transport' | 'fighter' | 'helicopter' | 'unknown';
 }
 
 /**

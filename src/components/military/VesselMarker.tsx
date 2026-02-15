@@ -58,7 +58,8 @@ export const VesselMarker: React.FC<VesselMarkerProps> = ({
   const icon = getVesselIcon(vessel.shipType);
   
   return (
-    <div
+    <button
+      type="button"
       className={`
         absolute transform -translate-x-1/2 -translate-y-1/2 
         cursor-pointer transition-all duration-200
@@ -111,7 +112,7 @@ export const VesselMarker: React.FC<VesselMarkerProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </button>
   );
 };
 

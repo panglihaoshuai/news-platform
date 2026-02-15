@@ -15,6 +15,8 @@ import { NewsItem, MapDisplayMode, Theme } from '@/types/news';
 import { getThemeTokens } from '@/styles/designTokens';
 import { REGION_CONFIG, getCountryByCode } from '@/config/region-mapping';
 import { useMilitaryTracking } from '@/hooks/useMilitaryTracking';
+import { useHotspotTracking } from '@/hooks/useHotspotTracking';
+import type { MilitaryAircraft, USBase } from '@/lib/military/types';
 import { MilitaryLayersPanel } from './MilitaryLayersPanel';
 import { MilitaryLayerRenderer } from './MilitaryLayerRenderer';
 
@@ -26,6 +28,8 @@ interface MilitaryMapIntegrationProps {
     displayMode?: MapDisplayMode;
     focusRegion?: string;
     focusCountry?: string;
+    militaryModeEnabled: boolean;
+    onToggleMilitaryMode: () => void;
 }
 
 function getPriority(importanceScore: number): 'P0' | 'P1' | 'P2' | 'P3' {
@@ -43,6 +47,8 @@ export const MilitaryMapIntegration: React.FC<MilitaryMapIntegrationProps> = ({
     displayMode = 'all',
     focusRegion = 'global',
     focusCountry = 'all',
+    militaryModeEnabled,
+    onToggleMilitaryMode,
 }) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
@@ -53,14 +59,27 @@ export const MilitaryMapIntegration: React.FC<MilitaryMapIntegrationProps> = ({
 
     // Military tracking hook
     const military = useMilitaryTracking();
+    const { setShowAirLayer, setShowBasesLayer } = military;
     
-    // Handle selection from both news and military
-    const handleSelect = (id: string) => {
-        onSelect(id);
-    };
-
+    // Hotspot tracking hook
+    const hotspot = useHotspotTracking();
+    
+    // Sync news to hotspot tracking
+    useEffect(() => {
+        if (militaryModeEnabled && news.length > 0) {
+            hotspot.setNews(news);
+        }
+    }, [news, militaryModeEnabled, hotspot]);
+    
+    // Sync aircraft to hotspot tracking
+    useEffect(() => {
+        if (militaryModeEnabled && military.aircraft.length > 0) {
+            hotspot.updateAircraft(military.aircraft);
+        }
+    }, [military.aircraft, militaryModeEnabled, hotspot]);
+    
     // Handle military selections
-    const handleSelectAircraft = (aircraft: any) => {
+    const handleSelectAircraft = (aircraft: MilitaryAircraft | null) => {
         if (aircraft && map.current) {
             map.current.flyTo({
                 center: [aircraft.longitude, aircraft.latitude],
@@ -72,19 +91,7 @@ export const MilitaryMapIntegration: React.FC<MilitaryMapIntegrationProps> = ({
         }
     };
 
-    const handleSelectVessel = (vessel: any) => {
-        if (vessel && map.current) {
-            map.current.flyTo({
-                center: [vessel.longitude, vessel.latitude],
-                zoom: 8,
-                speed: 0.8,
-                curve: 1.4,
-                essential: true
-            });
-        }
-    };
-
-    const handleSelectBase = (base: any) => {
+    const handleSelectBase = (base: USBase | null) => {
         if (base && map.current) {
             map.current.flyTo({
                 center: [base.location.lng, base.location.lat],
@@ -116,6 +123,13 @@ export const MilitaryMapIntegration: React.FC<MilitaryMapIntegrationProps> = ({
 
         return () => clearInterval(interval);
     }, [news, selectedId, onSelect, userInteracted]);
+
+    useEffect(() => {
+        if (!militaryModeEnabled) {
+            setShowAirLayer(false);
+            setShowBasesLayer(false);
+        }
+    }, [militaryModeEnabled, setShowAirLayer, setShowBasesLayer]);
 
     // Map Initialization
     useEffect(() => {
@@ -399,9 +413,9 @@ export const MilitaryMapIntegration: React.FC<MilitaryMapIntegrationProps> = ({
             {/* Military Layer Renderer */}
             <MilitaryLayerRenderer
                 map={map.current}
-                showAirLayer={military.isAirLayerActive}
-                showNavalLayer={military.isNavalLayerActive}
-                showBasesLayer={military.isBasesLayerActive}
+                showAirLayer={militaryModeEnabled && military.isAirLayerActive}
+                showNavalLayer={false}
+                showBasesLayer={militaryModeEnabled && military.isBasesLayerActive}
                 aircraft={military.aircraft}
                 vessels={military.vessels}
                 bases={military.bases}
@@ -409,13 +423,15 @@ export const MilitaryMapIntegration: React.FC<MilitaryMapIntegrationProps> = ({
                 selectedVessel={military.selectedVessel}
                 selectedBase={military.selectedBase}
                 onSelectAircraft={handleSelectAircraft}
-                onSelectVessel={handleSelectVessel}
+                onSelectVessel={() => {}}
                 onSelectBase={handleSelectBase}
             />
 
             {/* Military Control Panel */}
             <div className="absolute top-4 right-4 z-20">
                 <MilitaryLayersPanel
+                    theme={theme}
+                    militaryModeEnabled={militaryModeEnabled}
                     showAirLayer={military.isAirLayerActive}
                     showBasesLayer={military.isBasesLayerActive}
                     aircraftCount={military.aircraftCount}
@@ -423,11 +439,140 @@ export const MilitaryMapIntegration: React.FC<MilitaryMapIntegrationProps> = ({
                     isLoading={military.isLoading}
                     lastUpdated={military.lastUpdated}
                     error={military.error}
+                    onToggleMilitaryMode={onToggleMilitaryMode}
                     onToggleAirLayer={military.toggleAirLayer}
                     onToggleBasesLayer={military.toggleBasesLayer}
                     onRefresh={military.refresh}
                 />
             </div>
+            
+            {/* Hotspot Info Panel */}
+            {militaryModeEnabled && hotspot.activeHotspots.length > 0 && (
+                <div 
+                    className="absolute top-4 left-4 z-20 max-w-xs animate-slide-in"
+                >
+                    <div 
+                        className="rounded-lg backdrop-blur-md overflow-hidden"
+                        style={{ 
+                            backgroundColor: tokens.bg.secondary,
+                            border: `1px solid ${tokens.border.highlight}`,
+                            boxShadow: tokens.shadow.panel,
+                        }}
+                    >
+                        {/* Header with gradient accent */}
+                        <div 
+                            className="px-3 py-2 flex items-center gap-2"
+                            style={{ 
+                                background: `linear-gradient(90deg, ${tokens.accent.down}20 0%, transparent 100%)`,
+                                borderBottom: `1px solid ${tokens.border.default}`,
+                            }}
+                        >
+                            <div className="relative">
+                                <div 
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: tokens.accent.down }}
+                                />
+                                <div 
+                                    className="absolute inset-0 w-2 h-2 rounded-full animate-ping opacity-75"
+                                    style={{ backgroundColor: tokens.accent.down }}
+                                />
+                            </div>
+                            <span 
+                                className="text-xs font-bold uppercase tracking-wider"
+                                style={{ color: tokens.accent.down }}
+                            >
+                                热点追踪
+                            </span>
+                            <span 
+                                className="text-xs"
+                                style={{ color: tokens.text.muted }}
+                            >
+                                Hotspot
+                            </span>
+                        </div>
+                        
+                        {/* Hotspot Items */}
+                        <div className="p-3 space-y-2">
+                            {hotspot.activeHotspots.map((hotspotInfo, index) => (
+                                <div 
+                                    key={hotspotInfo.destinationId}
+                                    className="group cursor-pointer rounded-md p-2 transition-all duration-200 hover:scale-[1.02]"
+                                    style={{
+                                        animationDelay: `${index * 100}ms`,
+                                    }}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div 
+                                                className="w-1.5 h-1.5 rounded-full"
+                                                style={{ 
+                                                    backgroundColor: tokens.accent.down,
+                                                    boxShadow: `0 0 6px ${tokens.accent.down}`,
+                                                }}
+                                            />
+                                            <span 
+                                                className="text-sm font-medium"
+                                                style={{ color: tokens.text.primary }}
+                                            >
+                                                {hotspotInfo.destinationNameZh}
+                                            </span>
+                                        </div>
+                                        <span 
+                                            className="text-xs font-mono px-1.5 py-0.5 rounded"
+                                            style={{ 
+                                                backgroundColor: tokens.accent.down + '20',
+                                                color: tokens.accent.down,
+                                            }}
+                                        >
+                                            {hotspotInfo.totalAircraft}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Type breakdown */}
+                                    <div 
+                                        className="mt-1.5 flex flex-wrap gap-1"
+                                        style={{ color: tokens.text.muted }}
+                                    >
+                                        {Object.entries(hotspotInfo.byType).map(([type, count]) => (
+                                            <span 
+                                                key={type}
+                                                className="text-xs px-1.5 py-0.5 rounded bg-gray-800/50"
+                                                style={{ color: tokens.text.secondary }}
+                                            >
+                                                {type}: {count}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {/* Summary footer */}
+                        {hotspot.totalHighlighted > 0 && (
+                            <div 
+                                className="px-3 py-2 border-t flex items-center gap-2"
+                                style={{ 
+                                    borderColor: tokens.border.default,
+                                    backgroundColor: tokens.bg.tertiary,
+                                }}
+                            >
+                                <span 
+                                    className="animate-pulse"
+                                    style={{ color: tokens.accent.up }}
+                                >
+                                    ★
+                                </span>
+                                <span 
+                                    className="text-xs font-medium"
+                                    style={{ color: tokens.accent.up }}
+                                >
+                                    {hotspot.totalHighlighted} 军机正在飞往热点
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Auto-Pilot Indicator */}
             <div className="absolute bottom-6 left-6 z-10 flex items-center gap-2 pointer-events-none">

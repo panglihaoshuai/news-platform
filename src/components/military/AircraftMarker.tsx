@@ -10,6 +10,7 @@
 
 import React from 'react';
 import type { MilitaryAircraft } from '@/lib/military/types';
+import { getAircraftTypeColor } from '@/lib/military/aircraft-classifier';
 
 interface AircraftMarkerProps {
   aircraft: MilitaryAircraft;
@@ -30,6 +31,21 @@ function getAircraftIcon(callsign: string | null): string {
   if (cs.includes('C130') || cs.includes('C17')) return '🛬'; // Cargo
   
   return '✈️';
+}
+
+function getAircraftIconByType(type: MilitaryAircraft['aircraftType']): string {
+  switch (type) {
+    case 'bomber':
+      return 'B';
+    case 'transport':
+      return 'T';
+    case 'fighter':
+      return 'F';
+    case 'helicopter':
+      return 'H';
+    default:
+      return 'A';
+  }
 }
 
 /**
@@ -55,10 +71,12 @@ export const AircraftMarker: React.FC<AircraftMarkerProps> = ({
   isSelected, 
   onClick 
 }) => {
-  const icon = getAircraftIcon(aircraft.callsign);
+  const color = getAircraftTypeColor(aircraft.aircraftType || 'unknown');
+  const icon = getAircraftIconByType(aircraft.aircraftType);
   
   return (
-    <div
+    <button
+      type="button"
       className={`
         absolute transform -translate-x-1/2 -translate-y-1/2 
         cursor-pointer transition-all duration-200
@@ -77,19 +95,26 @@ export const AircraftMarker: React.FC<AircraftMarkerProps> = ({
       <div 
         className={`
           w-3 h-3 rounded-sm border border-white shadow-lg
-          ${isSelected ? 'bg-red-500' : 'bg-red-400'}
+          ${isSelected ? '' : ''}
         `}
         style={{ 
+          backgroundColor: color,
           transform: `rotate(${aircraft.heading}deg)`,
           boxShadow: isSelected 
-            ? '0 0 0 4px rgba(239,68,68,0.4), 0 4px 12px rgba(0,0,0,0.5)' 
+            ? `0 0 0 4px ${color}66, 0 4px 12px rgba(0,0,0,0.5)` 
             : '0 2px 6px rgba(0,0,0,0.3)'
         }}
       >
         <div 
-          className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[8px] border-b-red-500 absolute -top-1 left-1/2 -translate-x-1/2"
-          style={{ transform: `rotate(${aircraft.heading}deg)` }}
+          className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent absolute -top-1 left-1/2 -translate-x-1/2"
+          style={{ borderBottom: `8px solid ${color}`, transform: `rotate(${aircraft.heading}deg)` }}
         />
+        <span
+          className="absolute -right-2 -top-2 text-[8px] bg-black/70 text-white rounded px-1"
+          style={{ transform: `rotate(${aircraft.heading}deg)` }}
+        >
+          {icon}
+        </span>
       </div>
       
       {isSelected && (
@@ -100,12 +125,12 @@ export const AircraftMarker: React.FC<AircraftMarkerProps> = ({
               {formatAltitude(aircraft.altitude)} | {formatSpeed(aircraft.velocity)}
             </div>
             <div className="text-gray-400 text-[10px]">
-              {aircraft.originCountry}
+              {aircraft.originCountry} | {(aircraft.aircraftType || 'unknown').toUpperCase()}
             </div>
           </div>
         </div>
       )}
-    </div>
+    </button>
   );
 };
 
@@ -118,17 +143,18 @@ export function createAircraftMarkerElement(
   onClick: (aircraft: MilitaryAircraft) => void
 ): HTMLDivElement {
   const el = document.createElement('div');
+  const color = getAircraftTypeColor(aircraft.aircraftType || 'unknown');
   
   el.className = 'military-aircraft-marker';
   el.style.cssText = `
     width: 12px;
     height: 12px;
-    background-color: ${isSelected ? '#EF4444' : '#F87171'};
+    background-color: ${color};
     border: 1px solid white;
     border-radius: 2px;
     cursor: pointer;
     box-shadow: ${isSelected 
-      ? '0 0 0 4px rgba(239,68,68,0.4), 0 4px 12px rgba(0,0,0,0.5)' 
+      ? '0 0 0 4px rgba(255,255,255,0.3), 0 4px 12px rgba(0,0,0,0.5)' 
       : '0 2px 6px rgba(0,0,0,0.3)'
     };
     transition: all 0.2s ease;

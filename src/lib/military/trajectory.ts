@@ -11,6 +11,7 @@
 
 import type { MilitaryAircraft, MilitaryVessel, USBase, TrajectoryPoint, VesselTrack } from './types';
 import { getBaseById } from './us-bases';
+import { getDestinationById, type HotspotDestination } from './destinations';
 
 // ============================================================================
 // Configuration
@@ -18,6 +19,8 @@ import { getBaseById } from './us-bases';
 
 const MAX_HISTORY_POINTS = 100; // Maximum positions to store per vessel
 const TRAJECTORY_TIMEOUT = 3600; // 1 hour - positions older than this are stale
+const MIN_FLIGHT_DISTANCE_KM = 15; // Minimum distance to consider as flight (not taxiing/parked)
+const DIRECTION_TOLERANCE_DEG = 60; // Angle tolerance for "flying towards" (degrees)
 
 // ============================================================================
 // In-Memory Storage
@@ -300,6 +303,213 @@ export function getGlobalDistribution(vessels: MilitaryVessel[]): {
     totalVessels: vessels.length,
     byRegion,
     byStatus,
+  };
+}
+
+// ============================================================================
+// Flight Direction Analysis (Plan B)
+// ============================================================================
+
+/**
+ * Calculate heading from point A to point B
+ * Properly handles the antimeridian (180°/-180° boundary)
+ * 
+ * @param from - Origin position {lat, lng}
+ * @param to - Destination position {lat, lng}
+ * @returns Heading in degrees (0-360, 0=North, 90=East)
+ */
+export function calculateHeading(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+): number {
+  // Handle antimeridian crossing - use shortest path
+  let dLng = to.lng - from.lng;
+  
+  // If longitude difference > 180°, go the other way
+  if (dLng > 180) {
+    dLng = dLng - 360;
+  } else if (dLng < -180) {
+    dLng = dLng + 360;
+  }
+  
+  dLng = toRad(dLng);
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - 
+            Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+/**
+ * Calculate angle difference between two headings
+ * 
+ * @param heading1 - First heading in degrees
+ * @param heading2 - Second heading in degrees
+ * @returns Minimum angle difference (0-180)
+ */
+function angleDifference(heading1: number, heading2: number): number {
+  let diff = Math.abs(heading1 - heading2) % 360;
+  if (diff > 180) diff = 360 - diff;
+  return diff;
+}
+
+/**
+ * Check if aircraft trajectory is flying towards a destination
+ * 
+ * @param trajectory - Array of position history (chronological)
+ * @param destination - Target destination coordinates [lat, lng]
+ * @returns Object with analysis results
+ */
+export function analyzeFlightDirection(
+  trajectory: TrajectoryPoint[],
+  destination: [number, number]
+): {
+  isFlyingTowards: boolean;
+  confidence: 'high' | 'medium' | 'low';
+  distanceCoveredKm: number;
+  heading: number;
+  targetHeading: number;
+  angleDiff: number;
+} | null {
+  if (!trajectory || trajectory.length < 2) {
+    return null;
+  }
+  
+  const start = trajectory[0];
+  const end = trajectory[trajectory.length - 1];
+  
+  // Calculate distance covered
+  const distanceCoveredKm = calculateDistance(
+    start.lat, start.lng,
+    end.lat, end.lng
+  );
+  
+  // Need minimum distance to determine direction (not taxiing/parked)
+  if (distanceCoveredKm < MIN_FLIGHT_DISTANCE_KM) {
+    return {
+      isFlyingTowards: false,
+      confidence: 'low',
+      distanceCoveredKm,
+      heading: 0,
+      targetHeading: 0,
+      angleDiff: 180,
+    };
+  }
+  
+  // Calculate actual flight heading
+  const heading = calculateHeading(
+    { lat: start.lat, lng: start.lng },
+    { lat: end.lat, lng: end.lng }
+  );
+  
+  // Calculate heading to target
+  const targetHeading = calculateHeading(
+    { lat: start.lat, lng: start.lng },
+    { lat: destination[0], lng: destination[1] }
+  );
+  
+  // Calculate angle difference
+  const angleDiff = angleDifference(heading, targetHeading);
+  
+  // Determine confidence based on distance and angle
+  let confidence: 'high' | 'medium' | 'low';
+  if (distanceCoveredKm >= 50 && angleDiff <= 30) {
+    confidence = 'high';
+  } else if (distanceCoveredKm >= 25 && angleDiff <= 45) {
+    confidence = 'medium';
+  } else {
+    confidence = 'low';
+  }
+  
+  return {
+    isFlyingTowards: angleDiff <= DIRECTION_TOLERANCE_DEG,
+    confidence,
+    distanceCoveredKm,
+    heading,
+    targetHeading,
+    angleDiff,
+  };
+}
+
+/**
+ * Get all aircraft flying towards a specific destination
+ * 
+ * @param aircraftList - Array of aircraft with their trajectories
+ * @param destinationId - Destination ID from destinations config
+ * @returns Filtered aircraft flying towards the destination
+ */
+export function getAircraftFlyingToDestination(
+  aircraftList: Array<{ aircraft: MilitaryAircraft; trajectory: TrajectoryPoint[] }>,
+  destinationId: string
+): Array<{
+  aircraft: MilitaryAircraft;
+  trajectory: TrajectoryPoint[];
+  analysis: ReturnType<typeof analyzeFlightDirection>;
+}> {
+  const destination = getDestinationById(destinationId);
+  if (!destination) {
+    return [];
+  }
+  
+  return aircraftList
+    .map(({ aircraft, trajectory }) => {
+      const analysis = analyzeFlightDirection(trajectory, destination.center);
+      return { aircraft, trajectory, analysis };
+    })
+    .filter(item => item.analysis?.isFlyingTowards)
+    .sort((a, b) => {
+      // Sort by confidence (high first), then by distance
+      const confidenceOrder = { high: 0, medium: 1, low: 2 };
+      const diff = confidenceOrder[a.analysis!.confidence] - confidenceOrder[b.analysis!.confidence];
+      if (diff !== 0) return diff;
+      return (b.analysis!.distanceCoveredKm || 0) - (a.analysis!.distanceCoveredKm || 0);
+    });
+}
+
+/**
+ * Calculate hotspot statistics for a destination
+ * 
+ * @param aircraftList - Array of aircraft with their trajectories
+ * @param destinationId - Destination ID
+ * @returns Statistics for the hotspot
+ */
+export function getHotspotStats(
+  aircraftList: Array<{ aircraft: MilitaryAircraft; trajectory: TrajectoryPoint[] }>,
+  destinationId: string
+): {
+  destination: HotspotDestination | undefined;
+  totalAircraft: number;
+  byType: Record<string, number>;
+  byConfidence: Record<string, number>;
+  aircraft: Array<{
+    aircraft: MilitaryAircraft;
+    trajectory: TrajectoryPoint[];
+    analysis: ReturnType<typeof analyzeFlightDirection>;
+  }>;
+} {
+  const destination = getDestinationById(destinationId);
+  const matching = getAircraftFlyingToDestination(aircraftList, destinationId);
+  
+  const byType: Record<string, number> = {};
+  const byConfidence: Record<string, number> = {};
+  
+  for (const item of matching) {
+    const type = item.aircraft.aircraftType || 'unknown';
+    const confidence = item.analysis?.confidence || 'low';
+    
+    byType[type] = (byType[type] || 0) + 1;
+    byConfidence[confidence] = (byConfidence[confidence] || 0) + 1;
+  }
+  
+  return {
+    destination,
+    totalAircraft: matching.length,
+    byType,
+    byConfidence,
+    aircraft: matching,
   };
 }
 

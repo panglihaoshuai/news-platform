@@ -16,6 +16,7 @@ import {
   isUSFlag,
   isUSMilitaryAircraftObject 
 } from './military-filter';
+import { classifyAircraftType } from './aircraft-classifier';
 
 // ============================================================================
 // Configuration
@@ -154,7 +155,7 @@ export class OpenSkyClient {
   private transformState(state: OpenSkyState): MilitaryAircraft {
     const [icao24, callsign, originCountry, , lastContact, longitude, latitude, baroAltitude, , velocity, trueTrack, verticalRate, , geoAltitude, positionAccuracy] = state;
 
-    return {
+    const baseAircraft: MilitaryAircraft = {
       id: icao24 || '',
       callsign: callsign?.trim() || null,
       originCountry: originCountry || 'Unknown',
@@ -167,6 +168,12 @@ export class OpenSkyClient {
       isMilitary: false, // Will be set by filter
       verticalRate: verticalRate ?? undefined,
       positionAccuracy: positionAccuracy as 'estimated' | 'assumed' | 'known' | undefined,
+    };
+
+    const classification = classifyAircraftType(baseAircraft);
+    return {
+      ...baseAircraft,
+      aircraftType: classification.type,
     };
   }
 

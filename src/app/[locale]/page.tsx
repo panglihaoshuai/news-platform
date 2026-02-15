@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { InteractiveMap } from '@/components/InteractiveMap';
+import { MilitaryMapIntegration } from '@/components/military';
 import { NewsFeed } from '@/components/NewsFeed';
 import { TerminalLayout } from '@/components/layout/TerminalLayout';
 import { TickerBar } from '@/components/layout/TickerBar';
@@ -16,7 +16,8 @@ import { useMapDisplayMode } from '@/hooks/useMapDisplayMode';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { createClient } from '@supabase/supabase-js';
 import { getCountriesByRegion, getCountryByCode, COUNTRIES } from '@/config/region-mapping';
-import { Filter, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Filter, PanelRightOpen, PanelRightClose, Shield } from 'lucide-react';
+import { isMilitaryNews, sortMilitaryFirst } from '@/lib/military/news-filter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,6 +58,7 @@ function PageContent({ locale }: { locale: string }) {
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
   const [marketExpanded, setMarketExpanded] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [militaryModeEnabled, setMilitaryModeEnabled] = useState(false);
   const latestTopNewsIdRef = useRef<string | null>(null);
   const filterCount = filters.categories.length + (filters.region !== 'global' ? 1 : 0) + (filters.country !== 'all' ? 1 : 0);
 
@@ -136,7 +138,7 @@ function PageContent({ locale }: { locale: string }) {
           .filter(Boolean);
         setAvailableCountries(isoCodes);
 
-        const enrichedNews: NewsItem[] = data
+        let enrichedNews: NewsItem[] = data
           .map(item => {
             const source = sources.find(s => s.id === item.source_id);
             return {
@@ -148,6 +150,10 @@ function PageContent({ locale }: { locale: string }) {
           .filter(item => {
             if (filters.contentLanguage !== 'all' && item.source_language !== filters.contentLanguage) {
               return false;
+            }
+
+            if (militaryModeEnabled) {
+              return isMilitaryNews(item);
             }
             
             // Category filtering based on title keywords since database stores "General"
@@ -174,6 +180,10 @@ function PageContent({ locale }: { locale: string }) {
             return true;
           });
 
+        if (militaryModeEnabled) {
+          enrichedNews = sortMilitaryFirst(enrichedNews).filter((item) => isMilitaryNews(item));
+        }
+
         setNews(enrichedNews.slice(0, limit));
         const latest = enrichedNews[0];
         if (latest && latest.id !== latestTopNewsIdRef.current) {
@@ -194,7 +204,7 @@ function PageContent({ locale }: { locale: string }) {
 
     const interval = setInterval(fetchNews, 60000);
     return () => clearInterval(interval);
-  }, [filters, sources]);
+  }, [filters, sources, militaryModeEnabled]);
 
   const handleNewsSelect = useCallback((newsId: string) => {
     setSelectedId(newsId);
@@ -244,7 +254,7 @@ function PageContent({ locale }: { locale: string }) {
           />
         ),
         map: (
-          <InteractiveMap
+          <MilitaryMapIntegration
             news={news}
             selectedId={selectedId}
             onSelect={handleMapSelect}
@@ -252,6 +262,8 @@ function PageContent({ locale }: { locale: string }) {
             displayMode={mapDisplayMode}
             focusRegion={filters.region}
             focusCountry={filters.country}
+            militaryModeEnabled={militaryModeEnabled}
+            onToggleMilitaryMode={() => setMilitaryModeEnabled((prev) => !prev)}
           />
         ),
         left: (
@@ -299,6 +311,28 @@ function PageContent({ locale }: { locale: string }) {
                   {filtersOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
                   <Filter size={13} />
                   {filtersOpen ? 'Hide' : 'Open'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMilitaryModeEnabled((prev) => !prev)}
+                  style={{
+                    minHeight: 36,
+                    borderRadius: 8,
+                    border: militaryModeEnabled ? '1px solid rgba(255,59,48,0.65)' : '1px solid rgba(255,255,255,0.14)',
+                    background: militaryModeEnabled ? 'rgba(127,29,29,0.45)' : 'rgba(28,32,42,0.8)',
+                    color: '#f2f4f7',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: 0.4,
+                    padding: '0 10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Shield size={13} />
+                  {militaryModeEnabled ? 'Military ON' : 'Military OFF'}
                 </button>
               </div>
 
