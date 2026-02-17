@@ -36,6 +36,7 @@ export interface UseHotspotTrackingReturn {
   activeHotspots: HotspotInfo[];
   highlightedAircraft: MilitaryAircraft[];
   isTracking: boolean;
+  isAnalyzing: boolean; // Whether hotspot analysis is in progress
   
   // Actions
   updateAircraft: (aircraft: MilitaryAircraft[]) => void;
@@ -68,6 +69,9 @@ export function useHotspotTracking(): UseHotspotTrackingReturn {
   
   // Track if we're actively tracking
   const [isTracking, setIsTracking] = useState(false);
+  
+  // Track if hotspot analysis is in progress
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   // Refs for callbacks
   const aircraftRef = useRef<MilitaryAircraft[]>([]);
@@ -107,6 +111,9 @@ export function useHotspotTracking(): UseHotspotTrackingReturn {
       return;
     }
 
+    // Set analyzing state
+    setIsAnalyzing(true);
+    
     // Run hotspot analysis
     const analysis = analyzeHotspots(newsItems, aircraftWithTrajectories);
     
@@ -124,6 +131,7 @@ export function useHotspotTracking(): UseHotspotTrackingReturn {
     
     setActiveHotspots(hotspotInfos);
     setHighlightedAircraft(analysis.highlightedAircraft);
+    setIsAnalyzing(false);
   }, [newsItems, aircraftWithTrajectories, isTracking]);
 
   // Clear all hotspots
@@ -139,6 +147,7 @@ export function useHotspotTracking(): UseHotspotTrackingReturn {
     activeHotspots,
     highlightedAircraft,
     isTracking,
+    isAnalyzing,
     updateAircraft,
     setNews,
     clearHotspots,

@@ -12,15 +12,16 @@
 import type { MilitaryAircraft, MilitaryVessel, USBase, TrajectoryPoint, VesselTrack } from './types';
 import { getBaseById } from './us-bases';
 import { getDestinationById, type HotspotDestination } from './destinations';
+import { militaryConfig } from './config';
 
 // ============================================================================
-// Configuration
+// Configuration (using centralized config)
 // ============================================================================
 
-const MAX_HISTORY_POINTS = 100; // Maximum positions to store per vessel
-const TRAJECTORY_TIMEOUT = 3600; // 1 hour - positions older than this are stale
-const MIN_FLIGHT_DISTANCE_KM = 15; // Minimum distance to consider as flight (not taxiing/parked)
-const DIRECTION_TOLERANCE_DEG = 60; // Angle tolerance for "flying towards" (degrees)
+const MAX_HISTORY_POINTS = militaryConfig.trajectory.maxHistoryPoints;
+const TRAJECTORY_TIMEOUT = militaryConfig.trajectory.trajectoryTimeout;
+const MIN_FLIGHT_DISTANCE_KM = militaryConfig.trajectory.minFlightDistanceKm;
+const DIRECTION_TOLERANCE_DEG = militaryConfig.trajectory.directionToleranceDeg;
 
 // ============================================================================
 // In-Memory Storage

@@ -77,7 +77,6 @@ export const HOTSPOT_DESTINATIONS: HotspotDestination[] = [
       'china', 'chinese', '中国', '中共',
       'beijing', '北京',
       'philippines', '菲律宾',
-      'south china sea', '南海',
       'east china sea', '东海',
       'japan', 'japanese', '日本',
       'korea', 'korean', '朝鲜', '韩国',
