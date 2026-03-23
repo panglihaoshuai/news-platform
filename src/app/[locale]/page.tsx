@@ -19,17 +19,10 @@ import { getCountriesByRegion, getCountryByCode, COUNTRIES } from '@/config/regi
 import { Filter, PanelRightOpen, PanelRightClose, Shield } from 'lucide-react';
 import { isMilitaryNews, sortMilitaryFirst } from '@/lib/military/news-filter';
 
-// Validate environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error(
-    'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set'
-  );
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 function normalizeLanguage(value?: string | null, title?: string): 'en' | 'zh' {
   const lower = (value || '').toLowerCase();
